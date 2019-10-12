@@ -66,7 +66,7 @@ plt.show()
 
 
 
-# Comienza MCMC
+# Starts the MCMC
 Ntemps = 14
 Nwalkers = 64
 Tmax = None
