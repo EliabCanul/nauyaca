@@ -3,42 +3,69 @@ import ttvfast
 from astropy import units as u
 import sys
 
+
+Returns = {"OPT1": np.inf, "OPT2": 1e50, "OPT3": 1.0,
+            "MCMC1": -np.inf, "MCMC2": -1e50, "MCMC3": -1.0}
+
+
 def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
-    #Split 'flat_params' using 7 parameters per planet
+    """A wrapper to run TTVFast
+    
+    Arguments:
+        flat_params {Array} -- A flat array containing mass, period, eccentricity,
+            inclination, argument, mean anomaly, ascending node for all planets
+    
+    Keyword Arguments:
+        mstar {float} -- stellar mass in solar masses (default: {None})
+        NPLA {int} -- Number of planets in the system (default: {None})
+        Tin {float} -- Initial time for simulation (default: {0.})
+        Ftime {float} -- Final time of the simulation (default: {None})
+    
+    Returns:
+        Array -- An array 'SP' with transit numbers and transit epochs for all 
+        planets labeled in the entrance order from flat_params. 
+        From TTVFast doc:
+        [PLANET,  EPOCH,  TIME (DAYS),  RSKY (AU),  VSKY (AU/DAY)]
+        SP[0] = planet index, SP[1] = transit number, SP[2] = central time, 
+        SP[3] = Rsky, SP[4] = Vsky
+    """
+
+    # Split 'flat_params' using 7 parameters per planet
     iters = [iter(flat_params)] * 7
     planets = list(zip(*iters))
 
-    #Iteratively adds planet's parameters to TTVFast
+
+    # Iteratively adds planet's parameters to TTVFast
     planets_list = []
     min_period = min([ p[1] for p in planets ])
 
-    for planet in planets:
-        #Be careful with the order!: m, per, e, inc, omega, M, Omega
-        #See angle definitions: 
+    for _, planet in enumerate(planets):
+        # Be careful with the order!: m, per, e, inc, omega, M, Omega
+        # See angle definitions: 
         # https://rebound.readthedocs.io/en/latest/python_api.html
-        #TODO: refer to Nauyaca documentation (when exist)
-        k = planet[2]
-        h = planet[4]
-
+        # TODO: refer to Nauyaca documentation (when exist)
+        
         planets_list.append(
         ttvfast.models.Planet( 
-            mass= (planet[0]*u.Mearth).to(u.Msun).value,
+            mass= ((planet[0])*u.Mearth).to(u.Msun).value ,
             period = planet[1], 
-            eccentricity = np.sqrt( h**2 + k**2 ),
+            eccentricity = planet[2],
             inclination = planet[3],
-            argument = np.rad2deg(np.arctan(h/k)),
+            argument = planet[4],
             mean_anomaly = planet[5],
-            longnode = planet[6]))
+            longnode = planet[6] 
+            )
+            ) 
 
     signal = ttvfast.ttvfast(
-            planets_list, stellar_mass=mstar, time=Tin, dt=min_period/100, 
+            planets_list, stellar_mass=mstar, time=Tin, dt=min_period/20., 
             total=Ftime, rv_times=None, input_flag=1)   
     
     SP = signal['positions']
 
     try:
         lastidx = SP[2].index(-2.0)
-        SP = [ i[:lastidx] for i in SP] #Remove array without data
+        SP = [ i[:lastidx] for i in SP] # Remove array without data
     except:
         pass
     
@@ -78,26 +105,45 @@ def calculate_epochs(SP, self):
 
 
 def calculate_chi2(flat_params, self, flag="OPT"):
-
-    Returns = {"OPT1": np.inf, "OPT2": 1e50, "OPT3": 1.0,
-                "MCMC1": -np.inf, "MCMC2": -1e50, "MCMC3": -1.0}
+    """Calculate Chi square statistic between simulated transit times and
+    observed.
+    
+    Arguments:
+        flat_params {Array} -- A flat array containing mass, period, eccentricity,
+            inclination, argument, mean anomaly, ascending node for all planets
+    
+    Keyword Arguments:
+        flag {str} -- A flag to switch between minimum or maxima searching.
+        Set 'OPT' if you are looking for minima, as in optimizers.
+        Set 'MCMC' if you are looking for maxima, as in mcmc.
+        (default: {"OPT"})
+    
+    Returns:
+        float -- Returns chi square for 'OPT' option. Returns minus chi square
+            for 'MCMC' option.
+    """
 
     # Verify that proposal is inside boundaries
-    inside_bounds = intervals(self, flat_params) 
+    inside_bounds = intervals(self.bounds, flat_params) 
     if False in inside_bounds:
-        return Returns[flag+"1"]
+        return Returns[flag+"1"] 
     else:
         pass
 
+    # Reconstruct flat_params adding the constant values
+    flat_params = list(flat_params)
+    for k, v in sorted(self.constant_params.items(), key=lambda j:j[0]):
+        flat_params.insert(k, v)
+
     # Get 'positions' from signal in TTVFast
     signal_pos = run_TTVFast(
-               flat_params, mstar=self.mstar, NPLA=self.NPLA, 
-               Tin=self.T0JD, Ftime=self.Ftime+1)
+               flat_params,  mstar=self.mstar, NPLA=self.NPLA, 
+               Ftime=self.sim_interval )
 
     # Calculate transits epochs
     EPOCHS = calculate_epochs(signal_pos, self)
 
-    #==== Compute chi^2
+    # Compute chi^2
     try:
         chi2 = 0.0
         for plnt_id, ttvs_obs in self.TTVs.items():
@@ -108,7 +154,7 @@ def calculate_chi2(flat_params, self, flag="OPT"):
 
         return Returns[flag+"3"] * chi2
     except:
-        return Returns[flag+"2"] 
+        return Returns[flag+"2"] #2
 
 
 # -----------------------------------------------------
@@ -116,6 +162,22 @@ def calculate_chi2(flat_params, self, flag="OPT"):
 
 def initial_walkers(self, ntemps=None, nwalkers=None, distribution=None,
                     opt_data=None, threshold=1.0):
+    """An useful function to easily create initial walkers.
+    
+    Keyword Arguments:
+        ntemps {int} -- Number of temperatures (default: {None})
+        nwalkers {int} -- number of walkers (default: {None})
+        distribution {str} -- A string option from:  {'Uniform' | 'Gaussian' | 'Picked'}
+        opt_data {str} -- Data from optimizers. Just used if Uniform or Picked
+            options are selected (default: {None})
+        threshold {float} -- A value between 0 and 1 to select the fraction of 
+            solutions from opt_data to take into account.
+            For example: threshold=0.5 takes the best half of solutions from 
+            opt_dat (default: {1.0})
+    
+    Returns:
+        Array -- An array of shape (ntemps, nwalkers, dimension)
+    """
 
     if nwalkers < 2*self.NPLA*7:
         sys.exit("Number of walkers must be >= 2*ndim, i.e., \n \
@@ -147,7 +209,7 @@ def func_uniform(self, ntemps=None, nwalkers=None):
         # Create uniform random walkers between boundaries
         RDM = np.random.uniform(linf , lsup, ntemps*nwalkers)
         POP0.append(RDM)
-    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, self.NPLA*7)
+    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds))  # !!!!
 
     return POP0
 
@@ -170,30 +232,36 @@ def func_gp(self, distribution, ntemps=None, nwalkers=None,
         if distr.lower() == 'gaussian':
             mu = np.mean(par)
             sig = np.std(par)
-            #print(mu, sig)
-            return np.random.normal(loc=mu,scale=sig)
+
+            if sig == 0.0:
+                return mu
+            else:
+                return np.random.normal(loc=mu,scale=sig)
         
         if distr.lower() == 'picked':
             return np.random.choice(par)
 
     # Clean and sort results. Get just data inside threshold.
     [opt_data.remove(res) for res in opt_data if res[0]==1e50]
-    opt_data.sort(key=lambda x: x[0])
-    cut = int(len(opt_data)*threshold) - 1 #index of maximum chi2
-    max_chi2 = opt_data[cut][0]
-    [opt_data.remove(res) for res in opt_data if res[0] < max_chi2]
-    param = np.array([x[1] for x in opt_data]).T
-
+    opt_data = sorted(opt_data, key=lambda x: x[0])
+    cut = int(len(opt_data)*threshold) - 1 # index of maximum chi2
+    opt_data = opt_data[:cut]
+    params = np.array([x[1:] for x in opt_data]).T
+    
     POP0 = []
-    for i, par in enumerate(param):
-        poptmp=[]
-        while len(poptmp) < ntemps*nwalkers:
-            rdm = random_choice(distribution, par)
-            if self.bounds[i][0] <= rdm and rdm <= self.bounds[i][1]:
-                poptmp.append(rdm)
+    i = 0
+    for par_idx, param in enumerate(params):
+        # Initialize walkers avoiding the constant paremeters
+        if par_idx not in list(self.constant_params.keys()):
+            poptmp = [] 
+            while len(poptmp) < ntemps*nwalkers:
+                rdm = random_choice(distribution, param)
+                if self.bounds[i][0] <= rdm and rdm <= self.bounds[i][1]:
+                    poptmp.append(rdm)
 
-        POP0.append(poptmp)
-    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, self.NPLA*7)
+            POP0.append(poptmp)
+            i += 1
+    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds))
     
     return POP0
 
@@ -202,10 +270,21 @@ def logp(x):
     return 0.0
 
 
-def intervals(self, flat_params):
+def intervals(frontiers, flat_params):
+    """A function to probe wheter values are inside the stablished boundaries
+    
+    Arguments:
+        frontiers {list} -- A list of the boundaries with [min, max] values
+        flat_params {list} -- A list of flat parameters
+    
+    Returns:
+        List -- A list with boolean values. True's are for those parameters
+            inside the boundaries and False's for those outside.
+    """
+
     TF = []
     for i in range(len(flat_params)):
-        if self.bounds[i][0]<= flat_params[i] <= self.bounds[i][1]:
+        if frontiers[i][0]<= flat_params[i] <= frontiers[i][1]:
             TF.append(True)
         else:
             TF.append(False)
