@@ -1,11 +1,13 @@
 import numpy as np
 import ttvfast
-from astropy import units as u
 import sys
+import h5py
 
-
+# Helpful variables
 Returns = {"OPT1": np.inf, "OPT2": 1e50, "OPT3": 1.0,
             "MCMC1": -np.inf, "MCMC2": -1e50, "MCMC3": -1.0}
+
+Mearth_to_Msun = 3.0034893488507934e-06
 
 
 def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
@@ -47,7 +49,7 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
         
         planets_list.append(
         ttvfast.models.Planet( 
-            mass= ((planet[0])*u.Mearth).to(u.Msun).value ,
+            mass= planet[0]*Mearth_to_Msun , #*u.Mearth).to(u.Msun).value ,
             period = planet[1], 
             eccentricity = planet[2],
             inclination = planet[3],
@@ -58,13 +60,13 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
             ) 
 
     signal = ttvfast.ttvfast(
-            planets_list, stellar_mass=mstar, time=Tin, dt=min_period/20., 
+            planets_list, stellar_mass=mstar, time=Tin, dt=min_period/100., 
             total=Ftime, rv_times=None, input_flag=1)   
     
     SP = signal['positions']
 
     try:
-        lastidx = SP[2].index(-2.0)
+        lastidx = SP[2].index(-2.0) # -2.0 is indicatiive of empty data
         SP = [ i[:lastidx] for i in SP] # Remove array without data
     except:
         pass
@@ -99,7 +101,8 @@ def calculate_epochs(SP, self):
             EPOCHS[k] = {item[1]:T0+item[2] for item in list(zip(*SP)) 
                         if item[0]==v and item[3]<= self.rstarAU}
     except:
-        print('Warning: Invalid proposal')
+        pass
+        #print('Warning: Invalid proposal')
         
     return EPOCHS    
 
@@ -154,7 +157,7 @@ def calculate_chi2(flat_params, self, flag="OPT"):
 
         return Returns[flag+"3"] * chi2
     except:
-        return Returns[flag+"2"] #2
+        return Returns[flag+"2"]
 
 
 # -----------------------------------------------------
@@ -264,6 +267,145 @@ def func_gp(self, distribution, ntemps=None, nwalkers=None,
     POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds))
     
     return POP0
+
+def mcmc_summary(hdf5_file, burning=0.0):
+
+    assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
+
+    #output_name= hdf5_file.split()[0]
+    f = h5py.File(hdf5_file, 'r')
+    syst_name = f['NAME'].value
+    colnames = f['COL_NAMES'].value[:]
+    
+    index = f['INDEX'].value[0]
+    
+    ms = f["MSTAR"].value[0]
+    rs = f["RSTAR"].value[0]
+    npla = f['NPLA'].value[0]
+    
+    nw = f["NWALKERS"].value[0]
+    nt = f["NTEMPS"].value[0]
+    cs = f["CONVER_STEPS"].value[0]
+    
+    maxc2 = f["BESTCHI2"].value[:index+1]
+    bs = f["BESTSOLS"].value[:index+1]
+    
+    burning = int(burning*index)
+    chains = f['CHAINS'].value[0,:,burning:index+1,:] #Just for temperature 0
+
+    f.close()
+    
+    best = zip(maxc2, bs)
+
+    # Reverse the list because we sorte by -chi**2
+    sort_res = sorted(list(best), key=lambda j: j[0], reverse=True)
+    best_chi2, best_sol = sort_res[0][0], sort_res[0][1]
+
+    
+    #chains = chains[:,burning:index+1,:]
+    
+    print("-->Planetary System: ", syst_name)
+    print("   Stellar mass: ", ms)
+    print("   Stellar radius: ", rs)
+    print("   Number of planets: ", npla)
+    print("--------------------------")
+    print("-->MCMC parameters")
+    print("   Ntemps: ", nt)
+    print("   Nwalkers per temperature: ", nw)
+    print("   Thining: ", cs)
+    print("--------------------------")
+    print("      RESULTS             ")
+    print("-->Best solution in MCMC")
+    print("   Best chi2 solution: ", round(best_chi2,5))
+    for i in range(npla):
+        print("   " + "   ".join( str(round(k,4)) for k in np.array_split(best_sol, npla)[i]) )
+    print("--------------------------")    
+    print("-->MCMC medians and 1-sigma errors")
+
+    for i, name in enumerate(list(colnames.split())):
+        parameter = chains[:,:,i].flatten()
+
+        low, med, up = np.percentile(parameter, [16,50,84])
+
+        if i == 1: 
+            # For period increase decimals
+            tit = "%s ^{+%s}_{-%s} " % (round(med,4),
+                                            round(up-med,4),
+                                            round(med-low,4))
+        elif i == 2:
+            # For eccentricity increase decimals
+            tit = "%s ^{+%s}_{-%s}" % (round(med,3),
+                                            round(up-med,3),
+                                            round(med-low,3))
+        else:
+            tit = "%s ^{+%s}_{-%s}" % (round(med,2),
+                                            round(up-med,2),
+                                            round(med-low,2))
+        #ndim += 1
+        print("   %15s      %20s" % (name, tit))
+    print("--------------------------") 
+    
+    return
+
+def geweke(self, hdf5_file=None, burning=0.0):
+    # Geweke criterion
+    # https://rlhick.people.wm.edu/stories/bayesian_5.html
+    # https://pymc-devs.github.io/pymc/modelchecking.html
+    
+    assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
+
+    ndim = len(self.bounds)
+
+    if hdf5_file:
+        f = h5py.File(hdf5_file, 'r')
+        index = f['INDEX'].value[0]
+        conver_steps = f['CONVER_STEPS'].value[0]
+        converge_time = f['ITER_LAST'].value[0]
+        chains = f['CHAINS'].value[:,:,:index+1,:]
+        f.close()
+
+        burning = int(burning*index)
+        last_it = int(converge_time / conver_steps)
+        chains = chains[0,:,burning:last_it,:]
+    
+    print("--> Performing Geweke test")
+
+    # Convergence test over temperature 0
+    #burned_chains = chains[:,burning_idx:index+1,:]  # sampler.chain
+    current_length = chains.shape[1]
+
+    # Make two subsamples at 10% and 50%
+    subset_first_10 = chains[:,:int(current_length/10),:]
+    subset_second_50 = chains[:,int(current_length/2):,:]
+
+    # Divide the second half of the burned chains in 20 chunks
+    chunks_idx = [int(i) for i in 
+            np.linspace(0,subset_second_50.shape[1],21)][1:-1]
+    subsets_20 = np.split(subset_second_50, 
+                        indices_or_sections=chunks_idx, axis=1)
+
+    # Make a z-test for the 20 chunks of the second half for
+    # all the dimensions
+    Z = []
+    for dimension in range(ndim):
+        ztas = []
+        for sub20 in subsets_20:
+            z = _z_score(subset_first_10[:,:,dimension], 
+                                        sub20[:,:,dimension])
+            ztas.append(z)
+        Z.append(ztas)
+    
+    return Z
+
+
+#@staticmethod
+def _z_score(theta_a, theta_b):
+
+    z = (np.mean(theta_a) - np.mean(theta_b)) / np.sqrt(np.var(theta_a) 
+        + np.var(theta_b))
+    
+    return z
+
 
 
 def logp(x):

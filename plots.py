@@ -74,7 +74,8 @@ def plot_TTVs(self, flat_params):
             # Make a model O-C given by the transits
             ttvs_dict = {k:v[0] for k,v in ttvs_dict.items()}                
             x_obs, y_obs, model_obs = calculate_model(ttvs_dict)
-            residuals_1 = (y_obs-model_obs.predict(x_obs))*mins
+
+            #residuals_1 = {x:y for x,y in zip(ttvs_dict.keys(), )} #(y_obs-model_obs.predict(x_obs))*mins
 
             # Plot observed TTVs
             sns.scatterplot(y_obs, (y_obs-model_obs.predict(x_obs))*mins, 
@@ -94,22 +95,23 @@ def plot_TTVs(self, flat_params):
                     NPLA=self.NPLA, Ftime=self.sim_interval )
                 EPOCHS = calculate_epochs(SP, self)
                 
-                # No model
+                # Whitout model
                 x_cal, y_cal, _ = calculate_model(EPOCHS[pids])
                 
                 axes[index].plot(y_cal, 
                             (y_cal-model_obs.predict(x_cal))*mins, '-+' )
                 axes[index].set_ylabel("O-C [min]")
-                axes[index].set_xlim(0, self.Ftime+1)
+                axes[index].set_xlim(self.T0JD/2., self.Ftime+self.T0JD/2.)
                 
                 # TODO: Remove thicks in all figures except the last!!
                 
                 # Plot residuals
-                residuals_2 = (y_cal-model_obs.predict(x_cal))*mins
-                residuals = [ r1-r2 for r1, r2 in 
-                                zip(residuals_1, residuals_2)]
+                residuals_2 = {x:y for x,y in zip(list(x_cal.flatten()), list(y_cal))} #(y_cal-model_obs.predict(x_cal))*mins
+                #residuals = [ r1-r2 for r1, r2 in 
+                #                zip(residuals_1, residuals_2)]
+                residuals = [(ttvs_dict[r]-residuals_2[r])*mins for r in sorted(ttvs_dict.keys()) ]
                 sub_ax.scatter(y_obs, residuals, s=5)
-                sub_ax.set_xlim(0, self.Ftime+1)
+                sub_ax.set_xlim(self.T0JD/2., self.Ftime+self.T0JD/2.)
                 
             index += 1
 
@@ -127,18 +129,19 @@ def plot_hist(self, chains=None, hdf5_file=None, burning=0.0):
     Arguments:
         chains {array} -- An array with shape (nwalkers, niters, nparams)
     """
+    
+    assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
+
     if hdf5_file:
         # Extract chains from hdf5 file
         f = h5py.File(hdf5_file, 'r')
         index = f['INDEX'].value[0]
-        conver_steps = f['CONVER_STEPS'].value[0]
-        converge_time = f['ITER_LAST'].value[0]
         chains = f['CHAINS'].value[:,:,:index+1,:]
         f.close()
 
         burning = int(burning*index)
-        last_it = int(converge_time / conver_steps)
-        chains = chains[0,:,burning:last_it,:]
+        #last_it = int(converge_time / conver_steps)
+        chains = chains[0,:,burning:index+1,:]
 
     sns.set(context='paper')
     _, axes = plt.subplots(nrows=self.NPLA, ncols=7, 
@@ -162,9 +165,21 @@ def plot_hist(self, chains=None, hdf5_file=None, burning=0.0):
                 sns.distplot(parameter, kde=False, hist=True, 
                             color=colors[p], ax=axes[n, p])
                 low, med, up = np.percentile(parameter, [16,50,84])
-                tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,2),
-                                                round(up-med,3),
-                                                round(med-low,3))
+              
+                if p == 1: 
+                    # For period increase decimals
+                    tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,4),
+                                                    round(up-med,4),
+                                                    round(med-low,4))
+                elif p == 2:
+                    # For eccentricity increase decimals
+                    tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,3),
+                                                    round(up-med,3),
+                                                    round(med-low,3))
+                else:
+                    tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,2),
+                                                    round(up-med,2),
+                                                    round(med-low,2))
                 axes[n, p].set_title(tit)
                 axes[n, p].set_yticks([])
                 dim += 1
@@ -179,11 +194,14 @@ def plot_hist(self, chains=None, hdf5_file=None, burning=0.0):
     return
 
 
-def plot_chains(self, chains=None, hdf5_file=None):
+def plot_chains(self, chains=None, hdf5_file=None, plot_means=True):
     """[summary]
     
-    Arguments:
-        chains {[type]} -- [description]
+    Keyword Arguments:
+        chains {[type]} -- [description] (default: {None})
+        hdf5_file {[type]} -- [description] (default: {None})
+        plot_means {bool} -- If True, then plot the mean of the chains at each
+                    iteration for all the dimensions (default: {True})
     """
     xlabel = 'Iteration / conver_steps '
     if hdf5_file:
@@ -194,7 +212,7 @@ def plot_chains(self, chains=None, hdf5_file=None):
         conver_steps = f['CONVER_STEPS'].value[0]
         f.close()
 
-        chains = chains[0,:,:,:]
+        chains = chains[0,:,:index+1,:]
         xlabel = f'Iteration / {conver_steps} '
 
     sns.set(context='paper')
@@ -231,6 +249,8 @@ def plot_corner(self, chains=None, hdf5_file=None, burning=0.0):
             burning = 0.2, removes the initial 20% of the chains.
     """
 
+    assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
+
     ndim = len(self.bounds) #npla*7
     #colnames = self.params_names.split()
 
@@ -245,9 +265,9 @@ def plot_corner(self, chains=None, hdf5_file=None, burning=0.0):
 
         burning = int(burning*index)
         last_it = int(converge_time / conver_steps)
-        print(burning, last_it)
+        #print(burning, last_it)
         chains = chains[0,:,burning:last_it,:]
-    
+    # PARECE QUE AQUI FALTA CONSIDERAR index PARA HACER EL BURNING SOBRE chains
     nwalkers = chains.shape[0]
     steps = chains.shape[1]
     chains_2D = chains.reshape(nwalkers*steps,ndim) 
@@ -309,6 +329,52 @@ def plot_corner(self, chains=None, hdf5_file=None, burning=0.0):
     #plt.close()
     #plt.show()
     
+    return
+
+def plot_monitor(hdf5_file):
+
+    sns.set(context='notebook')
+    sns.set_style("white")
+
+    f = h5py.File(hdf5_file, 'r')
+    bestchi2 = f['BESTCHI2'].value
+    betas = f['BETAS'].value
+    acc = f['ACC_FRAC0'].value
+    meanchi2 = f['MEANCHI2'].value
+    tau = f['TAU_PROM0'].value
+    conv = f['CONVER_STEPS'].value[0]
+    index = f['INDEX'].value[0]
+    f.close()
+
+    _, axes = plt.subplots(nrows=2, ncols=2, figsize=(20,10), sharex=True)
+
+    # Temperatures
+    axes[0,0].plot(1./betas)
+    axes[0,0].plot(1./betas[:,0], color='k', lw=3)
+    axes[0,0].set_ylabel("Temperature")
+    axes[0,0].set_yscale("symlog")
+
+    # swap
+    axes[0,1].plot(acc[:index+1])
+    axes[0,1].plot(acc[:index+1,0], color='k', lw=3)
+    axes[0,1].set_ylabel("Accepted temperature swap fractions")
+
+    # Chi2
+    axes[1,0].plot(meanchi2[:index+1])
+    axes[1,0].plot(bestchi2[:index+1])
+    axes[1,0].set_ylabel(r"$-\chi^2$")
+    axes[1,0].set_yscale("symlog")
+    axes[1,0].set_xlabel(f"Steps/{conv}")
+
+    # Tau
+    axes[1,1].plot(tau[:index+1])
+    axes[1,1].set_ylabel("Mean autocorrelation time")
+    #x = np.linspace(0, index+1, 20)
+    #axes[1,1].plot(x, x*50/conv, '--k')
+    axes[1,1].set_xlabel(f"Steps/{conv}")
+
+    plt.subplots_adjust(wspace=0.15, hspace=0.05)
+
     return
 
 

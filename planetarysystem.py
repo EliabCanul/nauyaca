@@ -1,7 +1,6 @@
 from operatettvs import Optimizers, MCMC
 import numpy as np
 from dataclasses import dataclass
-from astropy import units as u
 import sys
 import copy
 import pickle
@@ -21,6 +20,8 @@ class PlanetarySystem:
     rstar : float
     Ftime : float = "Default"
     
+    print("\nWELCOME TO NAUYACA: A TOOL FOR THE TTVs INVERSION PROBLEM\n")
+
     def add_planets(self, new_planets):
 
         self.planets = {}
@@ -57,8 +58,8 @@ class PlanetarySystem:
 
         return
 
-    
     def __str__(self):
+        print("\n =========== Planetary System Summary =========== ")
         summary = [f"System: {self.system_name}"]
         summary.append(f"Mstar: {self.mstar} Msun |  Rstar: {self.rstar} Rsun")
         if self.NPLA > 0:
@@ -132,9 +133,10 @@ def _calculate_constants(PSystem, Ftime):
     PSystem.T0JD = min(tmp, key = lambda t: t[1])[1]
 
     # Time's window to make the simulations
-    PSystem.sim_interval = PSystem.Ftime - PSystem.T0JD + 0.2*(PSystem.T0JD)
+    PSystem.sim_interval = PSystem.Ftime - PSystem.T0JD + 0.1*(PSystem.T0JD)
 
     # Make available rstar in AU units
-    PSystem.rstarAU = (PSystem.rstar*u.Rsun).to(u.AU).value
+    Rsun_to_AU = 0.004650467260962157
+    PSystem.rstarAU = PSystem.rstar*Rsun_to_AU #u.Rsun).to(u.AU).value
 
     return
