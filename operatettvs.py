@@ -5,7 +5,6 @@ from scipy.optimize import differential_evolution
 from scipy.optimize import minimize
 from utils import *
 import multiprocessing as mp
-import matplotlib.pyplot as plt
 import time 
 import datetime
 import numpy as np
@@ -73,14 +72,14 @@ class Optimizers:
         """
         res = minimize(
             calculate_chi2, list(x0), method='Nelder-Mead', 
-            options={'maxiter':2000, 'maxfev':20000, 'disp':False},
+            options={'maxiter':2000, 'maxfev':1000, 'disp':False}, #20000
             args=(PSystem,))
         x1 = res.x
         f1 = res.fun
 
 		# Return the best result from the two methods above
         if f1 < f0 and not False in intervals(PSystem.bounds, x1):
-            # Insert again constan values
+            # Insert again constant values
             for k, v in sorted(PSystem.constant_params.items(), key=lambda j:j[0]):
                 x1 = np.insert(x1, k, v)
 
@@ -94,6 +93,10 @@ class Optimizers:
             return ([f1] + list(x1))
 
         else:
+            # Insert again constant values
+            for k, v in sorted(PSystem.constant_params.items(), key=lambda j:j[0]):
+                x0 = np.insert(x0, k, v)
+
             info = '{} \t {} \n'.format(str(np.round(f0,5)), 
                     "  ".join([str(np.round(it,5)) for it in x0]))
             print(indi+1, '\t   ', f0)
@@ -104,18 +107,18 @@ class Optimizers:
 
 
     @classmethod
-    def run_optimizers(cls, PSystem, Ftime='Auto', cores=1, niter=1, 
-                        base_name='_OPT'):
-
+    def run_optimizers(cls, PSystem, Ftime='Auto', cores=1, nsols=1, 
+                        suffix=''):
+        #Cambiar base_name a .opt
         ta = time.time()
         now = datetime.datetime.now()
 
         print("\n =========== OPTIMIZATION ===========\n")
         print("--> Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
-        print("--> Performing ", niter, " iterations using ", cores, " cores")
+        print("--> Finding ", nsols, " solutions using ", cores, " cores")
 
         # Output file name
-        base_name = '{}'.format(PSystem.system_name) + base_name
+        base_name = '{}'.format(PSystem.system_name) + suffix + ".opt"
 
         writefile( base_name, 'w', '#Results of the optimizers\n', 
                         '%-13s'*4 + '\n')
@@ -129,7 +132,7 @@ class Optimizers:
         print("--> Results will be saved at: ", base_name)
 
         print('- - - - - - - - - - - - - - - -')
-        print('Iteration    chi2_value'        )
+        print('Solution     chi2_value'        )
         print('- - - - - - - - - - - - - - - -')
         ta = time.time()
         
@@ -139,7 +142,7 @@ class Optimizers:
 
             pool = mp.Pool(processes=cores)
             results = [pool.apply_async(cls._differential_evolution_nelder_mead,
-                        args=(PSystem, base_name, i)) for i in range(niter)]
+                        args=(PSystem, base_name, i)) for i in range(nsols)]
             output = [p.get() for p in results]		
         print('Time elapsed in optimization: ', 
               (time.time() - ta)/60., 'minutes')
@@ -158,7 +161,7 @@ class MCMC:
     @classmethod
     def run_mcmc(cls, PSystem, Ftime='Auto', Itmax=100, conver_steps=2, cores=1,
                  nwalkers=None, ntemps=None, Tmax=None, betas=None, pop0=None, 
-                 suffix=''):
+                 burning=0.0, suffix=''):
 
         if ntemps is not None:
             cls.ntemps = ntemps
@@ -173,7 +176,8 @@ class MCMC:
         cls.Tmax = Tmax
         cls.pop0 = pop0
 
-        if cls.nwalkers < 2*PSystem.NPLA*7:
+        ndim = len(PSystem.bounds) # Number of dimensions
+        if cls.nwalkers < ndim:
             sys.exit("Number of walkers must be >= 2*ndim, i.e., \
                 nwalkers = {}.\n Stopped simulation!".format(2*PSystem.NPLA*7))
 
@@ -201,10 +205,11 @@ class MCMC:
         t0 = 1000. #1000./PSystem.nwalkers
         a_scale= 2.0
 
+        
         with closing(Pool(processes=cls.cores)) as pool:
 
             sampler = pt.Sampler(
-                    nwalkers=cls.nwalkers, dim=len(PSystem.bounds),
+                    nwalkers=cls.nwalkers, dim=ndim,
                     logp=logp, 
                     logl=calculate_chi2, ntemps=cls.ntemps, betas=cls.betas,
                     adaptation_lag = t0, adaptation_time=nu, a=a_scale, 
@@ -213,6 +218,7 @@ class MCMC:
 
             index = 0
             autocorr = np.empty( cls.nsteps )
+            record_meanchi2 = []
             
             # thin: The number of iterations to perform between saving the 
             # state to the internal chain.
@@ -228,39 +234,56 @@ class MCMC:
                                 for i, row in enumerate(s[2][:])
                                 for j, x in enumerate(row))
 
-                # get_autocorr_time:  Returns a matrix of autocorrelation 
+                # get_autocorr_time, returns a matrix of autocorrelation 
                 # lengths for each parameter in each temperature of shape 
-                # ``(Ntemps, Ndim)``.
-                tau = sampler.get_autocorr_time()#[0]
+                # ``(Ntemps, ndim)``.
+                tau = sampler.get_autocorr_time()
+                mean_tau = np.mean(tau)
+                # tswap_acceptance_fraction, returns an array of accepted 
+                # temperature swap fractions for each temperature; 
+                # shape ``(ntemps, )
+                # nswap_accepted/nswap
                 swap = list(sampler.tswap_acceptance_fraction)
 
-                print("--------- Iteration: ", iteration +1)
-                print(" <tau> :", np.mean(tau))
-                print(" acceptance fraction Temp 0: ", 
-                        round(np.mean(sampler.acceptance_fraction[0,:]),5) )
-                print(' <likelihood>: ', np.mean(s[2][0][:]))
-                print(' better posterior:', max_index,  max_value )
-                autocorr[index] = np.mean(tau)
+                # acceptance_fraction, matrix of shape ``(Ntemps, Nwalkers)`` 
+                # detailing the acceptance fraction for each walker.
+                # nprop_accepted/nprop
+                acc0 = sampler.acceptance_fraction[0,:]
+
+                xbest = s[0][max_index[0]][max_index[1]]
+
+                current_meanchi2 = np.mean(s[2][0][:])
+                record_meanchi2.append(current_meanchi2)
+                std_meanchi2 = np.std(record_meanchi2[int(index/2):])
+
+                # Output in console
+                print("--------- Iteration: ", iteration + 1)
+                print(" Mean tau:", round(mean_tau, 3))
+                print(" Accepted swap fraction in Temp 0: ", round(swap[0],3))
+                print(" Mean acceptance fraction Temp 0: ", round(np.mean(acc0),3))
+                print(" Mean likelihood: ", round(current_meanchi2, 3))
+                print(" Better Chi2: ", max_index,  round(max_value,3))
+                print(" Current mean Chi2 dispersion: ", round(std_meanchi2, 3))
+                autocorr[index] = mean_tau
 
                 """
                                 Save data in hdf5 File
                 """
-                xbest = s[0][max_index[0]][max_index[1]]
-
-                # Add the constant parameters
+                # Add the constant parameters to save the best solutions in the
+                # current iteration. It is not applicable to chains in the mcmc
                 for k, v in sorted(PSystem.constant_params.items(), key=lambda j:j[0]):
                     xbest = np.insert(xbest, k, v)
                     
                 # shape for chains is: (temps,walkers,steps,dim)
                 cls._save_mcmc(cls.hdf5_filename, sampler.chain[:,:,index,:], 
-                               xbest, sampler.betas, autocorr, index, np.mean(tau), 
-                               max_value, swap, max_index, iteration, s)
+                               xbest, sampler.betas, autocorr, index, mean_tau, 
+                               max_value, swap, max_index, iteration, current_meanchi2)
 
                 """
                                 CONVERGENCE CRITERIA
                 Here you can write your favorite convergency criteria 
-                xxxxxxxxxx
                 """
+                ##geweke()
 
                 index += 1
                 print(' Elapsed time: ', round((time.time() - ti)/60.,4),'min')                
@@ -268,7 +291,6 @@ class MCMC:
                     print('\n--> Maximum number of iterations reached in MCMC')
                     break				
 
-            #pool.terminate()
 
         """
         Extract best solutions from hdf5 file and write it in ascci
@@ -276,7 +298,7 @@ class MCMC:
         cls.extract_best_solutions(cls.hdf5_filename)
         
         print('--> Iterations performed: ', iteration +1)
-        print('--> Time elapsed in MCMC:', round((time.time() - ti)/60.,4), 
+        print('--> Elapsed time in MCMC:', round((time.time() - ti)/60.,4), 
                     'minutes')
 
         return sampler
@@ -290,8 +312,12 @@ class MCMC:
         with h5py.File(hdf5_filename, 'w') as newfile:
             # Empty datasets
             NCD = newfile.create_dataset
-            # COL_NAMES are the identifiers of each dimension
-            newfile['COL_NAMES'] = PSystem.params_names
+
+            # SHOULD INCLUDE INFO OF THE CONSTANT PARAMS
+            
+            # System name
+            newfile['NAME'] = PSystem.system_name
+
             # shape for chains is: (temps,walkers,steps,dim)
             NCD('CHAINS', (self.ntemps, self.nwalkers, nsteps, len(PSystem.bounds)), #!!! 
                         dtype='f8', compression= "lzf")
@@ -324,7 +350,10 @@ class MCMC:
             NCD('CORES', (1,), dtype='i8')[:] = self.cores
             NCD('ITMAX', (1,), dtype='i8')[:] = self.Itmax
             NCD('CONVER_STEPS', (1,), dtype='i8')[:] = self.conver_steps
-
+            
+            # COL_NAMES are the identifiers of each dimension
+            newfile['COL_NAMES'] = PSystem.params_names
+            
             # Parameters of the simulated system
             NCD('NPLA', (1,), dtype='i8')[:] = PSystem.NPLA
             NCD('MSTAR', (1,), dtype='f8')[:] = PSystem.mstar
@@ -335,29 +364,25 @@ class MCMC:
 
     @staticmethod
     def _save_mcmc(hdf5_filename, sampler_chain, xbest, sampler_betas, autocorr, 
-                   index, tau_mean, max_value, swap, max_index, iteration, s):
+                   index, tau_mean, max_value, swap, max_index, iteration, meanchi2):
         
-        Tg = time.time()
-        print(' Writing...')
+        print(' Saving...')
         with h5py.File(hdf5_filename, 'r+') as newfile:
             # shape for chains is: (temps,walkers,steps,dim)
             newfile['CHAINS'][:,:,index,:] = sampler_chain
             newfile['BETAS'][index,:] = sampler_betas
             newfile['AUTOCORR'][:] = autocorr
             newfile['INDEX'][:] = index
-            newfile['TAU_PROM0'][index] = tau_mean
+            newfile['TAU_PROM0'][index] = tau_mean #repetido con autocorr
             newfile['ACC_FRAC0'][index,:] = swap
             newfile['ITER_LAST'][:] = iteration + 1
             # Best set of parameters in the current iteration
             newfile['BESTSOLS'][index,:] = xbest
             # Chi2 of that best set of parameters
             newfile['BESTCHI2'][index] = max_value
-            newfile['MEANCHI2'][index] = np.mean(s[2][0][:])
-        print(' Saved!')
-        print(' Elapsed time in saving: ', round(time.time()-Tg, 4), ' sec')
+            newfile['MEANCHI2'][index] = meanchi2
 
         return
-
 
     @staticmethod
     def extract_best_solutions(hdf5_filename):
@@ -365,12 +390,13 @@ class MCMC:
         mstar = f['MSTAR'][()][0]
         rstar = f['RSTAR'][()][0]
         NPLA = f['NPLA'][()][0]
-        best= f['BESTSOLS'][()] 
+        index = f['INDEX'][()][0]
+        best= f['BESTSOLS'][()]
         log1_chi2 = f['BESTCHI2'][()] 
         f.close()
 
         # Sort solutions by chi2: from better to worst
-        tupla = zip(log1_chi2,best)
+        tupla = zip(log1_chi2[:index+1], best[:index+1])
         tupla_reducida = list(dict(tupla).items())
         sorted_by_chi2 = sorted(tupla_reducida, key=lambda tup: tup[0])[::-1] 
 
