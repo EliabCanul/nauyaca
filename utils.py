@@ -36,6 +36,7 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
     iters = [iter(flat_params)] * 7
     planets = list(zip(*iters))
 
+    # TODO: Verify that planets contains exactly 7 parameters per planet
 
     # Iteratively adds planet's parameters to TTVFast
     planets_list = []
@@ -101,8 +102,8 @@ def calculate_epochs(SP, self):
             EPOCHS[k] = {item[1]:T0+item[2] for item in list(zip(*SP)) 
                         if item[0]==v and item[3]<= self.rstarAU}
     except:
-        pass
-        #print('Warning: Invalid proposal')
+        #pass
+        print('Warning: Invalid proposal')
         
     return EPOCHS    
 
@@ -181,6 +182,8 @@ def initial_walkers(self, ntemps=None, nwalkers=None, distribution=None,
     Returns:
         Array -- An array of shape (ntemps, nwalkers, dimension)
     """
+
+    assert(0.0 <= threshold <= 1.0), f"threshold must be between 0 and 1!"
 
     if nwalkers < 2*self.NPLA*7:
         sys.exit("Number of walkers must be >= 2*ndim, i.e., \n \
