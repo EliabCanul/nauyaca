@@ -2,7 +2,7 @@
 This is the nauyaca repository. Nauyaca is the tool for the TTVs inversion problem.
 
 
-Installation
+## Installation
 
 Python 3.7 is requiered
 
