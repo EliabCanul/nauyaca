@@ -1,8 +1,6 @@
-#import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-from utils import *
-from dataclasses import dataclass
+from .utils import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import corner 
@@ -10,10 +8,10 @@ import h5py
 import pandas as pd
 import numpy as np
 
-"""This is a modificable script.
-Plots class is ran outside the classes that make the TTVs operations
-"""
-
+__doc__ = """This is a modificable script. Plots class is ran outside the 
+            classes that make the TTVs operations
+            """
+__all__ = ["plot_TTVs", "plot_hist", "plot_chains", "plot_corner", "plot_monitor"]
 
 colors = {0:"red", 1:"olive", 2:"skyblue", 3:"gold", 4:"teal",
           5:"orange", 6:"purple"}
@@ -35,7 +33,7 @@ units = {0:r"$\mathrm{[M_{\oplus}]}$",
          6:r"$\mathrm{[deg]}$"}
 
 
-def plot_TTVs(self, flat_params):
+def plot_TTVs(self, flat_params, show_obs=True):
     """Plot the observed TTVs signals and the transit solutions from flat_params
     
     Arguments:
@@ -54,8 +52,12 @@ def plot_TTVs(self, flat_params):
     #sns.axes_style("darkgrid")
     #sns.set_style("darkgrid", {"axes.facecolor": ".9"})
     
-    nplots = len(self.TTVs)
+    nplots = self.NPLA #len(self.TTVs)
 
+    # FIXME: There's a problem when nplot=1, because ax=axes[index] doesn't
+    # work: TypeError: 'AxesSubplot' object is not subscriptable
+    # FIXME: There's a bug when the number of simulated transits doesn't 
+    # coincide with the number of observations
     _, axes = plt.subplots(figsize=(8,8), nrows=nplots, ncols=1, sharex=True)
     sns.despine()
     
@@ -64,7 +66,7 @@ def plot_TTVs(self, flat_params):
     for pids, _ in self.planets_IDs.items():
 
         if hasattr(self.planets[pids], "ttvs_data"):
-                
+
             # Read observed TTVs of current planet
             ttvs_dict = {k:self.TTVs[pids][k] for k 
                                     in sorted(self.TTVs[pids].keys())}
@@ -73,16 +75,16 @@ def plot_TTVs(self, flat_params):
             
             # Make a model O-C given by the transits
             ttvs_dict = {k:v[0] for k,v in ttvs_dict.items()}                
-            x_obs, y_obs, model_obs = calculate_model(ttvs_dict)
-
+            x_obs, y_obs, model_obs = _calculate_model(ttvs_dict)
             #residuals_1 = {x:y for x,y in zip(ttvs_dict.keys(), )} #(y_obs-model_obs.predict(x_obs))*mins
-
-            # Plot observed TTVs
-            sns.scatterplot(y_obs, (y_obs-model_obs.predict(x_obs))*mins, 
-                            marker="o", ax=axes[index], color='k',
-                            label=f'{pids}')
-            axes[index].errorbar(y_obs, (y_obs-model_obs.predict(x_obs))*mins, 
-                            yerr=errors, color='k', fmt='o', zorder=-1)
+            
+            if show_obs:
+                # Plot observed TTVs
+                sns.scatterplot(y_obs, (y_obs-model_obs.predict(x_obs))*mins, 
+                                marker="o", ax=axes[index], color='k',
+                                label=f'{pids}')
+                axes[index].errorbar(y_obs, (y_obs-model_obs.predict(x_obs))*mins, 
+                                yerr=errors, color='k', fmt='o', zorder=2) #-1
             
 
             # Make space for residuals
@@ -90,28 +92,38 @@ def plot_TTVs(self, flat_params):
             sub_ax = divider.append_axes("bottom", size="30%", pad=0.1)
 
             for solution in  flat_params:
-                # Plot the best solutions given in flat_params
+                # Plot the solutions given in flat_params
                 SP = run_TTVFast(solution, mstar=self.mstar, 
-                    NPLA=self.NPLA, Ftime=self.sim_interval )
+                    NPLA=self.NPLA,Tin=0., Ftime= self.time_span )
                 EPOCHS = calculate_epochs(SP, self)
                 
+                # Make coincide the number of observed and simulated transits
+                epochs = {epoch[0]:EPOCHS[pids][epoch[0]] for epoch in x_obs }
+
                 # Whitout model
-                x_cal, y_cal, _ = calculate_model(EPOCHS[pids])
-                
+                x_cal, y_cal, model_calc = _calculate_model(epochs)
+                #print('calc: ', x_cal, y_cal)
                 axes[index].plot(y_cal, 
                             (y_cal-model_obs.predict(x_cal))*mins, '-+' )
                 axes[index].set_ylabel("O-C [min]")
-                axes[index].set_xlim(self.T0JD/2., self.Ftime+self.T0JD/2.)
+                axes[index].set_xlim(self.T0JD/2., self.time_span )
                 
                 # TODO: Remove thicks in all figures except the last!!
                 
                 # Plot residuals
                 residuals_2 = {x:y for x,y in zip(list(x_cal.flatten()), list(y_cal))} #(y_cal-model_obs.predict(x_cal))*mins
-                #residuals = [ r1-r2 for r1, r2 in 
-                #                zip(residuals_1, residuals_2)]
-                residuals = [(ttvs_dict[r]-residuals_2[r])*mins for r in sorted(ttvs_dict.keys()) ]
+                #
+                residual_obs = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins  for x,y in zip(list(x_obs.flatten()), list(y_obs))}
+                residual_cal = {x:(y-model_calc.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
+                #OC_obs = (y_obs-model_obs.predict(x_obs))*mins 
+                #OC_cal = (y_cal-model_calc.predict(x_cal))*mins
+                #
+                ###residuals = [ r1-r2 for r1, r2 in 
+                ###                zip(residuals_1, residuals_2)]
+                #residuals = [(ttvs_dict[r]-residuals_2[r])*mins for r in sorted(ttvs_dict.keys()) ]
+                residuals = [residual_obs[r]-residual_cal[r] for r in sorted(ttvs_dict.keys())]
                 sub_ax.scatter(y_obs, residuals, s=5)
-                sub_ax.set_xlim(self.T0JD/2., self.Ftime+self.T0JD/2.)
+                sub_ax.set_xlim(self.T0JD/2., self.time_span)
                 
             index += 1
 
@@ -123,7 +135,7 @@ def plot_TTVs(self, flat_params):
     return
 
 
-def plot_hist(self, chains=None, hdf5_file=None, burning=0.0):
+def plot_hist(self, chains=None, hdf5_file=None, temperature=0, burning=0.0):
     """Make histograms of the every planetary parameter
     
     Arguments:
@@ -141,7 +153,7 @@ def plot_hist(self, chains=None, hdf5_file=None, burning=0.0):
 
         burning = int(burning*index)
         #last_it = int(converge_time / conver_steps)
-        chains = chains[0,:,burning:index+1,:]
+        chains = chains[temperature,:,burning:index+1,:]
 
     sns.set(context='paper')
     _, axes = plt.subplots(nrows=self.NPLA, ncols=7, 
@@ -194,7 +206,7 @@ def plot_hist(self, chains=None, hdf5_file=None, burning=0.0):
     return
 
 
-def plot_chains(self, chains=None, hdf5_file=None, plot_means=True):
+def plot_chains(self, chains=None, hdf5_file=None, temperature=0, plot_means=True):
     """[summary]
     
     Keyword Arguments:
@@ -212,7 +224,7 @@ def plot_chains(self, chains=None, hdf5_file=None, plot_means=True):
         conver_steps = f['CONVER_STEPS'].value[0]
         f.close()
 
-        chains = chains[0,:,:index+1,:]
+        chains = chains[temperature,:,:index+1,:]
         xlabel = f'Iteration / {conver_steps} '
 
     sns.set(context='paper')
@@ -227,7 +239,7 @@ def plot_chains(self, chains=None, hdf5_file=None, plot_means=True):
             if param_idx not in list(self.constant_params.keys()):
 
                 axes[dim].plot( chains[:,:,dim].T, 
-                        color=colors[param], alpha=0.2)
+                        color=colors[param], alpha=0.1)
 
                 axes[dim].set_ylabel(labels[param]+str(pla+1)+ "\n" + 
                                             units[param], labelpad=10)
@@ -306,8 +318,8 @@ def plot_corner(self, chains=None, hdf5_file=None, burning=0.0):
 
     corner.corner(df, quantiles=[0.16, 0.5, 0.84], 
                 show_titles=True, 
-                title_kwargs={"fontsize": 8}, title_fmt='.3f',
-                label_kwargs={"fontsize": 8}, #"labelpad": 20},
+                title_kwargs={"fontsize": 12}, title_fmt='.3f',
+                label_kwargs={"fontsize": 12}, #"labelpad": 20},
                 plot_contours=True, plot_datapoints=False, 
                 plot_density=True, 
                 #data_kwargs={'markersize':3,'alpha':0.005, 'lw':10} , 
@@ -329,6 +341,34 @@ def plot_corner(self, chains=None, hdf5_file=None, burning=0.0):
     #plt.close()
     #plt.show()
     
+    return
+
+def plot_correl(self, chains=None, hdf5_file=None, burning=0.0):
+
+    ndim = len(self.bounds)
+
+    if hdf5_file:
+        f = h5py.File(hdf5_file, 'r')
+        index = f['INDEX'].value[0]
+        conver_steps = f['CONVER_STEPS'].value[0]
+        converge_time = f['ITER_LAST'].value[0]
+        chains = f['CHAINS'].value[:,:,:index+1,:]
+        nwalkers= f['NWALKERS'].value[0]
+        f.close()
+
+        burning = int(burning*index)
+        last_it = int(converge_time / conver_steps)
+        #print(burning, last_it)
+        chains = chains[0,:,burning:last_it,:]
+    # PARECE QUE AQUI FALTA CONSIDERAR index PARA HACER EL BURNING SOBRE chains
+    nwalkers = chains.shape[0]
+    steps = chains.shape[1]
+    chains_2D = chains.reshape(nwalkers*steps,ndim) 
+
+    df = pd.DataFrame(chains_2D)
+    plt.figure(figsize=[16,6])
+    sns.heatmap(df.corr(), vmin=-1, vmax=1, cmap='coolwarm',annot=True)
+
     return
 
 def plot_monitor(hdf5_file):
@@ -378,7 +418,7 @@ def plot_monitor(hdf5_file):
     return
 
 
-def calculate_model(ttvs_dict):
+def _calculate_model(ttvs_dict):
     X, Y = [], []
     for k, v in ttvs_dict.items():
         X.append(k)

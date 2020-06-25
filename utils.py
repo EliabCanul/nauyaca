@@ -2,12 +2,24 @@ import numpy as np
 import ttvfast
 import sys
 import h5py
+import pickle
+
+
+
+__all__ = ['run_TTVFast', 'calculate_epochs', 'log_likelihood_func',
+            'initial_walkers', 'mcmc_summary', 'extract_best_solutions', 
+            'get_mcmc_results', 'geweke', 'load_pickle', ]
+
+
+__doc__ = f"Miscelaneous functions. Available are: {__all__}"
+
 
 # Helpful variables
-Returns = {"OPT1": np.inf, "OPT2": 1e50, "OPT3": 1.0,
-            "MCMC1": -np.inf, "MCMC2": -1e50, "MCMC3": -1.0}
+Returns = {"OPT1": np.inf, "OPT2": 1e50, "OPT3": -1.0,
+            "MCMC1": -np.inf, "MCMC2": -1e50, "MCMC3": 1.0} 
 
 Mearth_to_Msun = 3.0034893488507934e-06
+
 
 
 def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
@@ -50,24 +62,24 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None):
         
         planets_list.append(
         ttvfast.models.Planet( 
-            mass= planet[0]*Mearth_to_Msun , #*u.Mearth).to(u.Msun).value ,
+            mass= planet[0]*Mearth_to_Msun, 
             period = planet[1], 
             eccentricity = planet[2],
             inclination = planet[3],
-            argument = planet[4],
-            mean_anomaly = planet[5],
+            argument = planet[4], 
+            mean_anomaly = planet[5], 
             longnode = planet[6] 
             )
             ) 
 
     signal = ttvfast.ttvfast(
-            planets_list, stellar_mass=mstar, time=Tin, dt=min_period/100., 
+            planets_list, stellar_mass=mstar, time=Tin, dt=min_period/30., 
             total=Ftime, rv_times=None, input_flag=1)   
     
     SP = signal['positions']
 
     try:
-        lastidx = SP[2].index(-2.0) # -2.0 is indicatiive of empty data
+        lastidx = SP[2].index(-2.0) # -2.0 is indicative of empty data
         SP = [ i[:lastidx] for i in SP] # Remove array without data
     except:
         pass
@@ -84,31 +96,21 @@ def calculate_epochs(SP, self):
         SP[3] = Rsky, SP[4] = Vsky"""
     
     EPOCHS = {}
-    # Identify the first transit planet in the simulation
-    try:
-        # Find the array index of the first transit of the 
-        # observed first_planet_transit
-        refpla = SP[0].index(self.planets_IDs[self.first_planet_transit]) 
-        
-        # Simulated time where the first transit of first_planet_transit 
-        # occurs.
-        t0_simulation = SP[2][refpla]
-
+    try:        
         # Save the transit epochs of every planet and convert them 
-        # to julian days. Time 0 for the simulations in julian days. 
+        # to julian days. Time T0JD is in julian days. 
         # This is the reference epoch for the whole simulations
-        T0 = self.T0JD - t0_simulation  
+        T0 = self.T0JD 
         for k, v in self.planets_IDs.items(): 
-            EPOCHS[k] = {item[1]:T0+item[2] for item in list(zip(*SP)) 
+            EPOCHS[k] = {item[1]:round(T0+item[2],6) for item in list(zip(*SP)) 
                         if item[0]==v and item[3]<= self.rstarAU}
     except:
-        #pass
         print('Warning: Invalid proposal')
         
     return EPOCHS    
 
 
-def calculate_chi2(flat_params, self, flag="OPT"):
+def log_likelihood_func(flat_params, self, flag="OPT"):
     """Calculate Chi square statistic between simulated transit times and
     observed.
     
@@ -128,9 +130,11 @@ def calculate_chi2(flat_params, self, flag="OPT"):
     """
 
     # Verify that proposal is inside boundaries
+    # (count the number of parameters outside the boundaries)
     inside_bounds = intervals(self.bounds, flat_params) 
     if False in inside_bounds:
-        return Returns[flag+"1"] 
+        falses = len(inside_bounds) - sum(inside_bounds)
+        return Returns[flag+"2"]  * falses  
     else:
         pass
 
@@ -141,25 +145,51 @@ def calculate_chi2(flat_params, self, flag="OPT"):
 
     # Get 'positions' from signal in TTVFast
     signal_pos = run_TTVFast(
-               flat_params,  mstar=self.mstar, NPLA=self.NPLA, 
-               Ftime=self.sim_interval )
+            flat_params,  mstar=self.mstar, NPLA=self.NPLA, 
+            Tin=0., Ftime= self.time_span )
 
-    # Calculate transits epochs
+    # Compute simulated ephemerids (epochs: transits)
     EPOCHS = calculate_epochs(signal_pos, self)
 
+    """
     # Compute chi^2
+    # TODO: return individual chi2 for each planet. necessary??
     try:
         chi2 = 0.0
         for plnt_id, ttvs_obs in self.TTVs.items():
             ttvs_sim = EPOCHS[plnt_id]
+
             for epoch, times in ttvs_obs.items():
                 sig_obs = (times[1] + times[2])/2.
-                chi2 = chi2 + ((times[0] - ttvs_sim[epoch])/sig_obs)**2
+                chi2 = chi2 + ((times[0] - ttvs_sim[epoch] )/sig_obs)**2
+            
+        return  Returns[flag+"3"] * chi2
 
-        return Returns[flag+"3"] * chi2
     except:
-        return Returns[flag+"2"]
+        #print("EPOCHS", EPOCHS)
+        return  1e10 * Returns[flag+"3"] 
+    """
 
+    # Compute the log-likelihood
+    # TODO: return individual chi2 for each planet. necessary??
+    loglike = 0.0
+    try:
+        for plnt_id, ttvs_obs in self.TTVs.items():
+
+            chi2 = 0.0            
+            ttvs_sim = EPOCHS[plnt_id]
+            
+            for epoch, times in ttvs_obs.items():
+                sigma = self.sigma_obs[plnt_id][epoch] 
+                chi2 += ((times[0] - ttvs_sim[epoch] ) / sigma)**2
+
+            loglike += - 0.5*chi2 - self.second_term_logL[plnt_id]
+        
+        return Returns[flag+"3"] * loglike
+
+    except:
+
+        return  Returns[flag+"2"] 
 
 # -----------------------------------------------------
 # ADITIONAL FUNCTIONS TO MAKE LIFE EASIER
@@ -193,7 +223,7 @@ def initial_walkers(self, ntemps=None, nwalkers=None, distribution=None,
         return func_uniform(self, ntemps=ntemps, nwalkers=nwalkers)
 
     if distribution.lower() in ("gaussian", "picked") and opt_data is not None:
-        return func_gp(self, distribution, ntemps=ntemps, nwalkers=nwalkers,
+        return _func_gp(self, distribution, ntemps=ntemps, nwalkers=nwalkers,
                     opt_data=opt_data, threshold=threshold)
     
     else:
@@ -204,7 +234,8 @@ def initial_walkers(self, ntemps=None, nwalkers=None, distribution=None,
         "optimizer routine.")
         sys.exit(" ".join(text))
 
-        
+
+
 def func_uniform(self, ntemps=None, nwalkers=None):
     print("\n--> Selected distribution: Uniform")
     POP0 = []
@@ -215,12 +246,13 @@ def func_uniform(self, ntemps=None, nwalkers=None):
         # Create uniform random walkers between boundaries
         RDM = np.random.uniform(linf , lsup, ntemps*nwalkers)
         POP0.append(RDM)
-    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds))  # !!!!
+    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds)) 
 
     return POP0
 
 
-def func_gp(self, distribution, ntemps=None, nwalkers=None, 
+
+def _func_gp(self, distribution, ntemps=None, nwalkers=None, 
             opt_data=None, threshold=1.0):
 
     print("\n--> Selected distribution: {}".format(distribution))
@@ -245,15 +277,44 @@ def func_gp(self, distribution, ntemps=None, nwalkers=None,
                 return np.random.normal(loc=mu,scale=sig)
         
         if distr.lower() == 'picked':
-            return np.random.choice(par)
+            return np.random.choice(par) 
 
     # Clean and sort results. Get just data inside threshold.
-    [opt_data.remove(res) for res in opt_data if res[0]==1e50]
+    # FIXME: There is a bug when opt_data is given from file. It must be
+    # converted to list: np.genfromtxt('syn52.opt').tolist()
+    [opt_data.remove(res) for res in opt_data if res[0]>=1e+50]
     opt_data = sorted(opt_data, key=lambda x: x[0])
+    # FIXME: There is a bug here when threshold = 0. Then cut = -1
+    # and opt_data remains the same.
     cut = int(len(opt_data)*threshold) - 1 # index of maximum chi2
     opt_data = opt_data[:cut]
-    params = np.array([x[1:] for x in opt_data]).T
-    
+
+    # Nuevo
+    params = np.array([x[1:] for x in opt_data])#.T
+    n_sols = len(params)
+    indexes = list(self.constant_params.keys())
+    POP0 = []
+    for _ in range(ntemps*nwalkers):
+
+        current_index = np.random.choice(range(n_sols))
+        current_solution =  params[current_index].tolist()
+        # Delete constant params
+        for index in sorted(indexes, reverse=True):
+            del current_solution[index]
+
+        perturbed_solution = []
+        for par_idx, param in enumerate(current_solution):
+            # Take random numbers btw 5% from the solutions and the boundaries
+            linf = (param - self.bounds[par_idx][0]) * np.random.uniform(0.0, 0.05)
+            lsup = (self.bounds[par_idx][1] - param) * np.random.uniform(0.0, 0.05)
+            delta = np.random.uniform(param-linf, param+lsup)
+
+            perturbed_solution.append(delta)
+        POP0.append(perturbed_solution)
+    POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(self.bounds))
+    # Nuevo
+
+    """
     POP0 = []
     i = 0
     for par_idx, param in enumerate(params):
@@ -268,10 +329,30 @@ def func_gp(self, distribution, ntemps=None, nwalkers=None,
             POP0.append(poptmp)
             i += 1
     POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds))
-    
+    """
     return POP0
 
+
+
 def mcmc_summary(hdf5_file, burning=0.0):
+    """Prints a summary of the mcmc and returns the posteriors with 1-sigma
+    uncertainties corresponding to the median and 16th and 84th quantiles.
+    
+    Arguments:
+        hdf5_file {[type]} -- The hdf5 file name
+    
+    Keyword Arguments:
+        burning {float} -- A number between 0 and 1 corresponding to the 
+        fraction of initial chains to be burned (default: {0.0})
+    
+    Returns:
+        dict -- A dictionary with each parameter and the resulting median, 
+        lower and upper errors respectively. 
+        For example: {'mass1': [5.5, 1.0, 1.3]} (mass1=5.5_{-1.0}^{+1.3}), where
+        5.5 is the median value of the distributions after the burning
+        1.0 is the lower error
+        1.3 is the upper error
+    """
 
     assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
 
@@ -288,10 +369,13 @@ def mcmc_summary(hdf5_file, burning=0.0):
     
     nw = f["NWALKERS"].value[0]
     nt = f["NTEMPS"].value[0]
+    ni = f["ITMAX"].value[0]
     cs = f["CONVER_STEPS"].value[0]
     
     maxc2 = f["BESTCHI2"].value[:index+1]
     bs = f["BESTSOLS"].value[:index+1]
+
+    ref_epoch = f["REF_EPOCH"].value[0]
     
     burning = int(burning*index)
     chains = f['CHAINS'].value[0,:,burning:index+1,:] #Just for temperature 0
@@ -304,7 +388,6 @@ def mcmc_summary(hdf5_file, burning=0.0):
     sort_res = sorted(list(best), key=lambda j: j[0], reverse=True)
     best_chi2, best_sol = sort_res[0][0], sort_res[0][1]
 
-    
     #chains = chains[:,burning:index+1,:]
     
     print("-->Planetary System: ", syst_name)
@@ -315,9 +398,12 @@ def mcmc_summary(hdf5_file, burning=0.0):
     print("-->MCMC parameters")
     print("   Ntemps: ", nt)
     print("   Nwalkers per temperature: ", nw)
+    print("   Number of iterations: ", ni)
     print("   Thining: ", cs)
     print("--------------------------")
     print("      RESULTS             ")
+    print("-->Results in File:  ", hdf5_file)
+    print("-->Reference epoch of the solutions: ", ref_epoch, " [JD]")
     print("-->Best solution in MCMC")
     print("   Best chi2 solution: ", round(best_chi2,5))
     for i in range(npla):
@@ -325,10 +411,17 @@ def mcmc_summary(hdf5_file, burning=0.0):
     print("--------------------------")    
     print("-->MCMC medians and 1-sigma errors")
 
+    posteriors = {}
+    #lower_err = {}
+    #upper_err = {}
     for i, name in enumerate(list(colnames.split())):
         parameter = chains[:,:,i].flatten()
 
         low, med, up = np.percentile(parameter, [16,50,84])
+
+        posteriors[f'{name}'], posteriors[f'{name}_e'], posteriors[f'{name}_E'] =  [med],[med-low],[up-med]
+        #lower_err[f'{name}_e'] = [med-low]
+        #upper_err[f'{name}_E'] = [up-med]
 
         if i == 1: 
             # For period increase decimals
@@ -348,7 +441,68 @@ def mcmc_summary(hdf5_file, burning=0.0):
         print("   %15s      %20s" % (name, tit))
     print("--------------------------") 
     
+    return posteriors
+
+
+
+def extract_best_solutions(hdf5_filename):
+    """Run over the chains of the mcmc and extract the best solution at each 
+        iteration.
+    
+    Arguments:
+        hdf5_filename {hdf5 file} -- A file with the mcmc results.
+    """
+
+    f = h5py.File(hdf5_filename, 'r')
+    mstar = f['MSTAR'][()][0]
+    rstar = f['RSTAR'][()][0]
+    NPLA = f['NPLA'][()][0]
+    index = f['INDEX'][()][0]
+    best= f['BESTSOLS'][()]
+    log1_chi2 = f['BESTCHI2'][()] 
+    f.close()
+
+    # Sort solutions by chi2: from better to worst
+    tupla = zip(log1_chi2[:index+1], best[:index+1])
+    tupla_reducida = list(dict(tupla).items())
+    sorted_by_chi2 = sorted(tupla_reducida, key=lambda tup: tup[0])[::-1] 
+
+    best_file = '{}.best'.format(hdf5_filename.split('.')[0])
+    head = "#Mstar[Msun]      Rstar[Rsun]     Nplanets"
+    writefile(best_file, 'w', head, '%-10s '*3 +'\n')
+    head = "#{}            {}           {}\n".format(mstar, rstar, NPLA)
+    writefile(best_file, 'a', head, '%-10s '*3 +'\n')
+
+    
+    head = "#-Chi2  " + " ".join([
+        "m{0}[Mearth]  Per{0}[d]  ecc{0}  inc{0}[deg]  arg{0}[deg]  M{0}[deg]\
+        Ome{0}[deg] ".format(i+1) for i in range(NPLA)]) + '\n'
+
+    writefile(best_file, 'a', head, '%-16s'+' %-11s'*(
+                                            len(head.split())-1) + '\n')
+    
+    for _, s in enumerate(sorted_by_chi2):
+        texto =  ' ' + str(round(s[0],5))+ ' ' + \
+                    " ".join(str(round(i,5)) for i in s[1]) 
+        writefile(best_file, 'a', texto,  '%-16s' + \
+                    ' %-11s'*(len(texto.split())-1) + '\n')
+    print(f'--> Best solutions from the {hdf5_filename} will be written at: {best_file}')
+
     return
+
+
+
+def get_mcmc_results(hdf5_file):
+    """ Extract the mcmc results from the hdf file. Returns a dictionary."""      
+    
+    f = h5py.File(hdf5_file, 'r')
+    output = {}
+    for k in f.keys():
+        output[k] = f.get(k).value
+
+    return output
+
+
 
 def geweke(self, hdf5_file=None, burning=0.0):
     # Geweke criterion
@@ -401,7 +555,22 @@ def geweke(self, hdf5_file=None, burning=0.0):
     return Z
 
 
-#@staticmethod
+
+def load_pickle(pickle_file):
+    """[summary]
+    
+    Arguments:
+        pickle_file {str} -- File name of planetary system object
+    
+    Returns:
+        obj -- returns a planetary system object
+    """
+    with open(f'{pickle_file}', 'rb') as input:
+        pickle_object = pickle.load(input)
+    return pickle_object
+
+
+
 def _z_score(theta_a, theta_b):
 
     z = (np.mean(theta_a) - np.mean(theta_b)) / np.sqrt(np.var(theta_a) 
@@ -409,10 +578,6 @@ def _z_score(theta_a, theta_b):
     
     return z
 
-
-
-def logp(x):
-    return 0.0
 
 
 def intervals(frontiers, flat_params):
@@ -429,11 +594,20 @@ def intervals(frontiers, flat_params):
 
     TF = []
     for i in range(len(flat_params)):
+        ##if isinstance(frontiers[i][0], list) == True:  # Omega
+        ##    #for ln in frontiers[i]:
+        # #   if (frontiers[i][0][0]<= flat_params[i] <= frontiers[i][0][1]) or  \
+        ##    (frontiers[i][1][0]<= flat_params[i] <= frontiers[i][1][1]):  # Omega
+        # #           TF.append(True)  # Omega
+        ##    else:  # Omega
+         #       TF.append(False)              # Omega
+        #else:
         if frontiers[i][0]<= flat_params[i] <= frontiers[i][1]:
             TF.append(True)
         else:
             TF.append(False)
     return TF
+
 
 
 def writefile(archivo , escritura , texto, align):
