@@ -1,5 +1,5 @@
 # nauyaca
-This is the nauyaca repository. Nauyaca is the tool for the TTVs inversion problem.
+Nauyaca is a tool for the TTVs inversion problem. Planetary masses and orbits are infered from mid-transit times fitting.
 
 
 ## Installation
