@@ -2,9 +2,14 @@ from dataclasses import dataclass
 import numpy as np
 import sys
 
-__doc__ = "Datos de setplanet"
+__doc__ = "setplanet data"
 
 __all__ = ["SetPlanet"]
+
+# TODO: col_names and units should be at __init__?? It is also in planetarysystem and utils
+col_names = ["mass", "period", "ecc", "inclination", "argument", "mean_anomaly",
+             "ascending_node"]
+units = ["[M_earth]", "[d]", "", "[deg]", "[deg]", "[deg]", "[deg]"]
 
 @dataclass
 class SetPlanet:
@@ -21,17 +26,17 @@ class SetPlanet:
     # Predefined boundaries. Change these physical bounds with responsibility 
     # and physical sense.
     physical_bounds = {
-        'mass': [3e-4, 26635],  # Mearth
-        'period': [0.1,500.0],  # days
-        'ecc': [0.00001, 0.7],  
-        'inclination': [0, 180.],  # deg 
-        'argument': [0.0, 360.],  # deg
-        'mean_anomaly': [0.0, 360.0],  # deg 
+        'mass': [3e-4, 25426.27252757], #1moon=0.0123032!! cambiar a ese valor # Mearth (lower=1 moon ;upper limit = 80 Mjup )
+        'period': [0.1, 1000.0],  # days
+        'ecc': [0.000001, 0.9],  # Cambiar a 0.9
+        'inclination': [0.0, 180.],  # deg 
+        'argument': [0.0, 360],  # deg 
+        'mean_anomaly': [0.0, 360],  # deg 
         'ascending_node': [0.0, 360.0]  # deg 
         }
 
     # Default boundaries are specified by physical_bounds
-    mass  = physical_bounds["period"]
+    mass  = physical_bounds["mass"]
     period  = physical_bounds["period"]
     ecc  = physical_bounds["ecc"] 
     inclination = physical_bounds["inclination"]
@@ -43,7 +48,7 @@ class SetPlanet:
     # TODO: Que avise cuando se hace un corte físico
     def set_boundaries(self):
 
-
+        # Physical boundaries
         self.boundaries = [ 
                     self._cut_boundaries("mass", self.mass),
                     self._cut_boundaries("period", self.period),
@@ -53,9 +58,20 @@ class SetPlanet:
                     self._cut_boundaries("mean_anomaly", self.mean_anomaly),
                     self._cut_boundaries("ascending_node", self.ascending_node)
                     ]
+
+        # Parameterized boundaries. Substitute argument (w) and mean anomaly (M)
+        # for parameterized angles x=w+M and y=w-M
+        self._boundaries_parameterized = [ 
+                    self.boundaries[0],
+                    self.boundaries[1],
+                    self.boundaries[2],
+                    self.boundaries[3],
+                    [min(self.boundaries[4])+min(self.boundaries[5]), max(self.boundaries[4])+max(self.boundaries[5])],
+                    [min(self.boundaries[4])-max(self.boundaries[5]), max(self.boundaries[4])-min(self.boundaries[5])],
+                    self.boundaries[6]]        
+        
     
-    def load_ttvs(self,ttvs_file):
-        # TODO: Can I use pandas instead?
+    def load_ttvs(self,ttvs_file,delimiter=None):
         """Add TTVs data to the planet        
         Arguments:
             ttvs_file {str} -- An ascci file containing transit number,
@@ -66,7 +82,7 @@ class SetPlanet:
                 ...
         """
         ttvs_data = {}
-        f = np.genfromtxt(f"{ttvs_file}", comments='#')
+        f = np.genfromtxt(f"{ttvs_file}", delimiter=delimiter, comments='#')
         for i in f:
             ttvs_data[int(i[0])] = [i[1], i[2], i[3] ]
 
@@ -87,3 +103,15 @@ class SetPlanet:
         phy_bds = self.physical_bounds[param_str]
 
         return [ max(phy_bds[0], param[0]), min(phy_bds[1], param[1]) ]
+
+    def __str__(self):
+        print("\n =========== Planet Summary =========== ")
+        summary = [f"Planet : {self.planet_id}"]
+        summary.append("  Boundaries:")
+        for i, v in enumerate(self.boundaries):
+            summary.append("\n".join([f"    {col_names[i]}: {v}  {units[i]}" ] ) )
+        if hasattr(self, "ttvs_data"):
+            summary.append("  TTVs: True")
+        else:
+            summary.append("  TTVs: False")
+        return "\n".join(summary)

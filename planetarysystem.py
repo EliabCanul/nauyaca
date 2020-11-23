@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from collections import OrderedDict
 import numpy as np
 import copy
 import pickle
@@ -12,7 +13,7 @@ col_names = ["mass", "period", "ecc", "inclination", "argument", "mean_anomaly",
 
 units = ["[M_earth]", "[d]", "", "[deg]", "[deg]", "[deg]", "[deg]"]
 
-Mjup_to_Msun = 0.000954594233969325
+Msun_to_Mearth = 332946.07832806994
 
 @dataclass
 class PlanetarySystem:  
@@ -30,12 +31,14 @@ class PlanetarySystem:
     system_name : str           
     mstar : float                
     rstar : float               
-    Ftime : float = "Default"    
+    Ftime : float = "Default" 
+    dt : float = 0.1   
 
     def add_planets(self, new_planets):
 
         self.planets = {}
         self.bounds = []
+        self._bounds_parameterized = []
         self.planets_IDs = {}
         self.TTVs = {} 
         self.NPLA = 0
@@ -44,14 +47,22 @@ class PlanetarySystem:
             # Dictionary with Planet objects
             self.planets[new_planet.planet_id] = new_planet
             
-            # Create the flat boundaries
+            # Upper mass boundary should be at most a small fracc of mstar
+            _check_mass_limits(self.mstar, new_planet)
+
+            # Create flat boundaries
             self.bounds.extend(new_planet.boundaries)
-            ##self.bounds_phys.extend(new_planet.boundaries_physical)  # quitar
+
+            # Create parameterized flat boundaries
+            self._bounds_parameterized.extend(new_planet._boundaries_parameterized)
+
             # Dictionary that saves the entry order
             self.planets_IDs[new_planet.planet_id] = self.NPLA
 
             # Check for ttvs in planet object and append to TTVs dictionary
-            if hasattr(new_planet, "ttvs_data"):
+            # TODO: checar si se puede cambiar a new_planet.ttvs_data.copy()
+            # y quitar el import de copy
+            if hasattr(new_planet, "ttvs_data"): 
                 self.TTVs[new_planet.planet_id] = copy.deepcopy(
                                                 new_planet.ttvs_data)
             
@@ -79,42 +90,69 @@ class PlanetarySystem:
                 summary.append("------"+"\n"+f"Planet: {k}")
                 summary.append("  Boundaries:")
                 summary.append("\n".join([f"    {col_names[i]}: {str(bo)}  {units[i]}" for i,bo in enumerate(v.boundaries)] ))
-                #summary.append("     "+"      ".join(col_names))
-                #summary.append("  "+"  ".join([ str(i) for i in v.boundaries] ))
                 if hasattr(self.planets[k], "ttvs_data"):
                     summary.append("  TTVs: True")
                 else:
                     summary.append("  TTVs: False")
             summary.append(f"\nTotal time of TTVs data: {self.Ftime} [days]")
-            #summary.append(f"First planet (ID) in transit: {self.first_planet_transit}")
+            summary.append(f"First planet (ID) in transit: {self.first_planet_transit}")
             summary.append(f"Reference epoch of the solutions: {self.T0JD} [JD]")
             summary.append(f"Time span of TTVs simulations: {self.time_span}")
+            summary.append(f"Timestep of the simulations: {self.dt} [days]")
 
         return "\n".join(summary)
 
+
+def _check_mass_limits(ms, Planet):
+    
+    upper_mass_limit = Planet.boundaries[0][1]    
+    k_limit = 0.01 # Percentage of stellar mass to set as upper mass bound
+
+    if upper_mass_limit > (k_limit * ms) * Msun_to_Mearth:
+        new_limit = (k_limit * ms) * Msun_to_Mearth
+        Planet.boundaries[0][1] = new_limit 
+        print(f'Upper mass boundary have been set to {new_limit} [Mearth] for planet {Planet.planet_id}')
+
+    return
+
+
 def _calculate_constants(PSystem, Ftime):
+    
+    assert len(PSystem.TTVs) > 0, "No Transit times have been provided for any planet. \
+        Use .load_ttvs() attribute in Planet object."
 
     # Identify constant parameters and save them
-    PSystem.constant_params = {}
+    # TODO: change constant_params from dict with numbers as keys for parameter strings?
+    PSystem.constant_params = OrderedDict() #{}
     for iPSb in range(len(PSystem.bounds)):
         if float(PSystem.bounds[iPSb][0]) == float(PSystem.bounds[iPSb][1]):
             PSystem.constant_params[iPSb] = float(PSystem.bounds[iPSb][0])
-
+    ##PSystem = sorted(PSystem.constant_params.items(), key=lambda j:j[0])
+    
     # Remove these boundaries of constants values from bounds
-    indexes = list(PSystem.constant_params.keys())
-    for index in sorted(indexes, reverse=True):
+    indexes_remove = list(PSystem.constant_params.keys())
+    for index in sorted(indexes_remove, reverse=True):
         del PSystem.bounds[index]
-    # TODO: Poner un seguro en el limite superior de masas para que sea
-    # a lo mas una fraccion de la masa de la estrella. Usar Mjup_to_Msun
-    # y usar limite de 0.01
+        # Nuevo. Delete constant values in parameterized bounds
+        del PSystem._bounds_parameterized[index]
+        # Nuevo
+
+    PSystem.ndim = len(PSystem.bounds) # Number of dimensions
+
+    # Nuevo
+    # Create an hypercube with bounds 0-1
+    PSystem.hypercube = [[0.,1.] for _ in range(len(PSystem.bounds)) ]
+    PSystem.bi, PSystem.bf = np.array(PSystem._bounds_parameterized).T 
+    # Nuevo
 
     # Create a string with parameter names
     params_names = []
     for i in range(1, PSystem.NPLA+1):
         for c in col_names:
             params_names.append(c+f"{i}")
-    
-    for index in sorted(indexes, reverse=True):
+    PSystem.params_names_opt = "  ".join(params_names)
+
+    for index in sorted(indexes_remove, reverse=True):
         del params_names[index]
     params_names = "  ".join(params_names)
     PSystem.params_names = params_names
@@ -132,6 +170,7 @@ def _calculate_constants(PSystem, Ftime):
         raise Exception("Ftime must be int, float or option \"Default\" ")
 
     # Discard TTVs outside the specified Ftime
+    # TODO: se puede usar .copy()?
     TTVs_copy = PSystem.TTVs
     [[TTVs_copy[j].pop(i) for i in list(PSystem.TTVs[j].keys()) \
         if PSystem.TTVs[j][i][0]>PSystem.Ftime] for j in list(PSystem.TTVs.keys()) ]
@@ -154,8 +193,11 @@ def _calculate_constants(PSystem, Ftime):
     for plnt_id, d_errs in PSystem.sigma_obs.items():
         arg_log = 2*np.pi* np.array(list(d_errs.values()))
         PSystem.second_term_logL[plnt_id] = np.sum( 0.5*np.log(arg_log) )
+        #
+        #arg_log = 2*np.sqrt(2.)* np.array(list(d_errs.values()))
+        #PSystem.second_term_logL[plnt_id] = np.sum( np.log(1./arg_log) )
 
-    """
+
     # Detect which is the first planet in transit (return planetary ID)        
     # FIXME: Does is it a necessary parameter?
     tmp = []
@@ -163,14 +205,19 @@ def _calculate_constants(PSystem, Ftime):
         t0_index = list(sorted(PSystem.TTVs[k]))[0]
         tmp.append( (k, PSystem.TTVs[k][t0_index][0] ) )
     PSystem.first_planet_transit = min(tmp, key = lambda t: t[1])[0]
-    """
+
 
     # Detect which is the time of the first transit and round it down.
     # --->>> T0JD will be the reference epoch of the solutions <<<---
-    PSystem.T0JD = 0. #( min(tmp, key = lambda t: t[1])[1] ) // 1
+    # FIXME: Parche hecho para que T0JD sea 0 para los sintéticos y min para
+    # los sistemas reales
+    if PSystem.system_name.startswith('syn'):
+        PSystem.T0JD = 0.0
+    else:
+        PSystem.T0JD =  ( min(tmp, key = lambda t: t[1])[1] ) // 1
     
-    # Time span to make the simulations
-    PSystem.time_span = 1.05*(PSystem.Ftime - PSystem.T0JD )#+ 0.1*(PSystem.T0JD) #+2.5 #quitar el 1
+    # Time span to make the simulations (DO NOT STABLISH IT MANUALLY!)
+    PSystem.time_span = 1.005*(PSystem.Ftime - PSystem.T0JD )#+ 0.1*(PSystem.T0JD) #+2.5 #quitar el 1
 
     # Make available rstar in AU 
     Rsun_to_AU = 0.004650467260962157
