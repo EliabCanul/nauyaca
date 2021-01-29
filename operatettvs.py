@@ -31,8 +31,7 @@ f = lambda x: x-360 if x>360 else (360+x if x<0 else x)
 @dataclass
 class Optimizers:
 
-    """
-    Fit the TTVs running sequentially the algorithms:
+    """Fit the TTVs running sequentially the algorithms:
     * Differential evolution 
     * Powell
     * Nelder Mead

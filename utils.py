@@ -2,12 +2,13 @@ import numpy as np
 import ttvfast
 import sys
 import h5py
-import pickle
+#import pickle
 
 __all__ = ['run_TTVFast', 'calculate_epochs', 'log_likelihood_func',
-            'initial_walkers', 'mcmc_summary', 'extract_best_solutions', 
-            'get_mcmc_results', 'geweke', 'gelman_rubin', 'load_pickle', 
-            'cube_to_physical', 'cube_to_physical_nomap', '_remove_constants']
+            'init_walkers', 'mcmc_summary', 'extract_best_solutions', 
+            'get_mcmc_results', 'geweke', 'gelman_rubin', ##'load_pickle', 
+            'cube_to_physical', 'cube_to_physical_nomap', '_remove_constants',
+            'calculate_ephemeris']
 
 
 __doc__ = f"Miscelaneous functions. Available are: {__all__}"
@@ -25,7 +26,7 @@ Mearth_to_Msun = 3.0034893488507934e-06
 
 f = lambda x: x-360 if x>360 else (360+x if x<0 else x) #lambda x: x-360 if x>360  else x
 
-def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None, dt=None):
+def run_TTVFast(flat_params, mstar=None, init_time=0., final_time=None, dt=None):
     """A wrapper to run TTVFast
     
     Arguments:
@@ -34,9 +35,9 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None, dt=None)
     
     Keyword Arguments:
         mstar {float} -- stellar mass in solar masses (default: {None})
-        NPLA {int} -- Number of planets in the system (default: {None})
-        Tin {float} -- Initial time for simulation (default: {0.})
-        Ftime {float} -- Final time of the simulation (default: {None})
+        ##NPLA {int} -- Number of planets in the system (default: {None})
+        init_time {float} -- Initial time for simulation (default: {0.})
+        final_time {float} -- Final time of the simulation (default: {None})
     
     Returns:
         Array -- An array 'SP' with transit numbers and transit epochs for all 
@@ -56,9 +57,10 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None, dt=None)
     # TODO: Verify that planets contains exactly 7 parameters per planet
 
     # Define the timestep
-    if dt == None:
-        min_period = min([ p[1] for p in planets ])
-        dt = min_period/30.
+    # FIXME: dt debe estar como parte de los atributos de PS????
+    #if dt == None:
+    #    min_period = min([ p[1] for p in planets ])
+    #    dt = round(min_period/30., 3)
 
     # Iteratively adds planet's parameters to TTVFast
     planets_list = []
@@ -84,22 +86,28 @@ def run_TTVFast(flat_params, mstar=None, NPLA=None, Tin=0., Ftime=None, dt=None)
             ) 
 
     signal = ttvfast.ttvfast(
-            planets_list, stellar_mass=mstar, time=Tin, dt=dt, 
-            total=Ftime, rv_times=None, input_flag=1)   
+            planets_list, stellar_mass=mstar, time=init_time, total=final_time,
+            dt=dt, rv_times=None, input_flag=1)   
     
-    SP = signal['positions']
+    SP = np.array(signal['positions'])
 
+    # -2.0 is indicative of empty data
+    mask = [SP[2] != -2]
+    
+    SP = np.array([ i[mask] for i in SP])
+    
     # TODO: checar si se pueden aplicar mascaras de numpy a este codigo
+    """
     try:
         lastidx = SP[2].index(-2.0) # -2.0 is indicative of empty data
         SP = [ i[:lastidx] for i in SP] # Remove array without data
     except:
         pass
-    
+    """
     return SP
 
 
-def calculate_epochs(SP, self):
+def calculate_ephemeris(SP, PSystem):
 
     """ SP: signal position array from TTVFast
         Signal Positions list contains:
@@ -107,22 +115,88 @@ def calculate_epochs(SP, self):
         SP[0] = planet index, SP[1] = transit number, SP[2] = central time, 
         SP[3] = Rsky, SP[4] = Vsky"""
     
-    EPOCHS = {}
+    ephemeris = {}
     try:        
         # Save the transit epochs of every planet and convert them 
         # to julian days. Time T0JD is in julian days. 
         # This is the reference epoch for the whole simulations
-        ##T0 = self.T0JD 
-        for k, v in self.planets_IDs.items(): 
-            EPOCHS[k] = {item[1]:round(self.T0JD + item[2],8) for item in list(zip(*SP)) 
-                        if item[0]==v and item[3]<= self.rstarAU}
+        ##T0 = PSystem.T0JD k
+        for planet_id, planet_number in PSystem.planets_IDs.items(): 
+            #ephemeris[planet_id] = {item[1]:round(PSystem.T0JD + item[2],8) for item in list(zip(*SP)) 
+            #            if item[0]==planet_number and item[3]<= PSystem.rstarAU}
+
+            planet_mask = SP[0] == planet_number
+            transit_mask = SP[3][planet_mask] <= PSystem.rstarAU
+
+            transit_number = SP[1][planet_mask][transit_mask].astype(int)
+            transit_time = SP[2][planet_mask][transit_mask] #+ PSystem.T0JD
+            
+            ephemeris[planet_id] = dict(zip(transit_number,transit_time))
+
     except:
         print('Warning: Invalid proposal')
         
-    return EPOCHS    
+    return ephemeris    
 
 
-def log_likelihood_func(flat_params, self, flag="OPT"):
+def calculate_epochs(PSystem, flat_params):
+
+    # Convert from hypercube data to physical
+    flat_params = cube_to_physical(PSystem, flat_params)
+
+    # Get 'positions' from signal in TTVFast
+    signal_position = run_TTVFast(flat_params,  
+                                mstar=PSystem.mstar, ##NPLA=PSystem.NPLA, 
+                                #init_time=0., final_time=PSystem.time_span, 
+                                init_time=PSystem.T0JD, 
+                                final_time=PSystem.Ftime, 
+                                dt=PSystem.dt)
+
+    # Compute simulated ephemerids (epochs: transits)
+    epochs = calculate_ephemeris(signal_position, PSystem)
+    
+    return epochs
+
+
+def _chi2(observed, sigma, simulated):
+    chi2 = 0.0
+    for planet_id, obs in observed.items():
+           
+        #obs = ttvs_obs #PS.transit_times[planet_id]
+        sim = simulated[planet_id]
+        sig = sigma[planet_id]  
+
+        try:
+            for epoch, times_obs in obs.items():
+                chi2 += ((times_obs - sim[epoch])/sig[epoch])**2
+                last_valid_epoch = epoch
+        except:
+            #chi2 = 1e20 + chi2  #np.inf
+
+            try:
+                chi2 +=  ( (times_obs- sim[last_valid_epoch]) /sig[epoch])**2   
+
+            except:
+                return 1e20 + chi2
+
+    return chi2
+
+
+def calculate_chi2(flat_params, PSystem):
+    # Verify that proposal is inside boundaries    
+    if False in intervals(PSystem.hypercube, flat_params):
+        return np.inf #Returns[flag+'1'] 
+    else:
+        pass
+    
+    sim_times = calculate_epochs(PSystem, flat_params)
+
+    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times)
+
+    return chi2
+
+
+def log_likelihood_func(flat_params, PSystem):#, flag="OPT"):
     """Calculate Chi square statistic between simulated transit times and
     observed.
     
@@ -142,42 +216,18 @@ def log_likelihood_func(flat_params, self, flag="OPT"):
     """
 
     # Verify that proposal is inside boundaries    
-    inside_bounds = intervals(self.hypercube, flat_params) 
-    if False in inside_bounds:
-        return Returns[flag+'1'] 
+    if False in intervals(PSystem.hypercube, flat_params):
+        return -np.inf #Returns[flag+'1'] 
     else:
         pass
     
+    sim_times = calculate_epochs(PSystem, flat_params)
 
-    flat_params = cube_to_physical(self, flat_params)
 
-    # Get 'positions' from signal in TTVFast
-    signal_position = run_TTVFast(flat_params,  
-                                mstar=self.mstar, NPLA=self.NPLA, 
-                                Tin=0., Ftime=self.time_span, dt=self.dt)
+    # Compute the log-likelihood
+    # TODO: return individual chi2 for each planet. necessary??
+    # TODO: Surely it is possible to make a better function to calculate loglike
 
-    # Compute simulated ephemerids (epochs: transits)
-    EPOCHS = calculate_epochs(signal_position, self)
-
-    """
-    if flag == 'OPT':
-        # Compute chi^2
-        # TODO: return individual chi2 for each planet. necessary??
-        try:
-            chi2 = 0.0
-            for plnt_id, ttvs_obs in self.TTVs.items():
-                ttvs_sim = EPOCHS[plnt_id]
-
-                for epoch, times in ttvs_obs.items():
-                    sig_obs = (times[1] + times[2])/2.
-                    chi2 = chi2 + ((times[0] - ttvs_sim[epoch] )/sig_obs)**2
-                
-            return  Returns[flag+"3"] * np.log10(chi2)
-
-        except:
-            #print("EPOCHS", EPOCHS)
-            return  Returns[flag+"2"] 
-    """
 
     """
     # Compute the log-likelihood
@@ -185,17 +235,17 @@ def log_likelihood_func(flat_params, self, flag="OPT"):
     # TODO: Surely it is possible to make a better function to calculate loglike
     loglike = 0.0
     try:
-        for plnt_id, ttvs_obs in self.TTVs.items():
+        for planet_id, ttvs_obs in PSystem.TTVs.items():
 
             chi2 = 0.0            
-            ttvs_sim = EPOCHS[plnt_id]
+            ttvs_sim = EPOCHS[planet_id]
             
             for epoch, times in ttvs_obs.items():
-                sigma = self.sigma_obs[plnt_id][epoch] 
+                sigma = PSystem.sigma_obs[planet_id][epoch] 
                 chi2 += ((times[0] - ttvs_sim[epoch] ) / sigma)**2 
                 
 
-            loglike += - 0.5*chi2 - self.second_term_logL[plnt_id]
+            loglike += - 0.5*chi2 - PSystem.second_term_logL[planet_id]
         return Returns[flag+"3"] * loglike
 
     except:
@@ -203,166 +253,166 @@ def log_likelihood_func(flat_params, self, flag="OPT"):
         # to compare with observations. Return current loglike + chi2 + a constant.
         return Returns[flag+"3"] * (loglike -chi2) + Returns[flag+"2"]
     """
-    loglike = 0.0
-
-    for plnt_id, ttvs_obs in self.TTVs.items():
+    
+    """
+    for planet_id, ttvs_obs in PSystem.TTVs.items():
 
         chi2 = 0.0            
-        ttvs_sim = EPOCHS[plnt_id]
+        ttvs_sim = EPOCHS[planet_id]
 
         for epoch, times in ttvs_obs.items():
-            sigma = self.sigma_obs[plnt_id][epoch] 
+            sigma = PSystem.sigma_obs[planet_id][epoch] 
 
             try:
                 chi2 += ((times[0] - ttvs_sim[epoch] ) / sigma)**2 
                 last_valid_epoch = epoch
                 
             except:
-                #return Returns[flag+'2'] 
-                """
-                ###
-                fracc = len(ttvs_sim)/float(len(ttvs_obs))
 
-                if fracc > 0.9:                     
-                    
-                    print(last_valid_epoch, epoch,  fracc)
-
-                    estimated_period = ttvs_sim[last_valid_epoch] - ttvs_sim[last_valid_epoch-1]
-                    sim_time = missing_transits*estimated_period + ttvs_sim[last_valid_epoch]
-
-                    #print("  sim_time:", sim_time)
-                    chi2 += ((times[0] - sim_time ) / sigma)**2   # ( /sigma)**2
-
-                    #chi2 += (1./sigma)**2                
-                    missing_transits+=1
-                else:
-                    chi2 += - Returns[flag+"2"]
-                    break
-                """
-                #chi2 +=  ( times[0]/sigma)**2   
                 try:
-                    #chi2 += np.log(1. + (times[0] - ttvs_sim[last_valid_epoch])**2/(2.*sigma**2) )
                     chi2 +=  ( (times[0]- ttvs_sim[last_valid_epoch]) /sigma)**2   
+
                 except:
                     return Returns[flag+"2"]    
 
         
-        currentL = - 0.5*chi2 - self.second_term_logL[plnt_id] #self.second_term_logL[plnt_id] -(3./2)*chi2
+        currentL = - 0.5*chi2 - PSystem.second_term_logL[planet_id] 
         
         loglike += currentL
         
     return  Returns[flag+"3"]*loglike
+    """
+    #loglike = 0.0
 
 
-def cube_to_physical(self, x):
+    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times)
+
+
+    loglike = - 0.5*chi2 - sum(PSystem.second_term_logL.values())
     
-    x =  self.bi + np.array(x)*(self.bf - self.bi)
+    return  loglike #Returns[flag+"3"]*loglike
+
+
+
+def cube_to_physical(PSystem, x):
+    # Revisar si aun funciona cuando bi, bf son listas. Deben quedarse como listas
+    #x = PSystem.bi + np.array(x)*(PSystem.bf - PSystem.bi)
+    x = np.array(PSystem.bi) + np.array(x)*(np.array(PSystem.bf) - np.array(PSystem.bi))
     # Reconstruct flat_params adding the constant values
     x = list(x)  
-    for k, v in self.constant_params.items(): 
+    for k, v in PSystem.constant_params.items(): 
         x.insert(k, v)
-    x = np.array(np.split(np.array(x), self.NPLA))
+    x = np.array(np.split(np.array(x), PSystem.NPLA))
 
     w = (x[:,4] + x[:,5])/2.
     M = w - x[:,5]
     x[:,4] = list(map(f,w))
     x[:,5] = list(map(f,M)) 
-    x = x.flatten()
 
-    return x
+    return x.flatten()
 
-def cube_to_physical_nomap(self, x):
-    
-    x =  self.bi + np.array(x)*(self.bf - self.bi)
+
+def cube_to_physical_nomap(PSystem, x):
+    # Remove??
+    x =  PSystem.bi + np.array(x)*(PSystem.bf - PSystem.bi)
     # Reconstruct flat_params adding the constant values
     x = list(x)  
-    for k, v in self.constant_params.items(): 
+    for k, v in PSystem.constant_params.items(): 
         x.insert(k, v)
-    x = np.array(np.split(np.array(x), self.NPLA))
+    x = np.array(np.split(np.array(x), PSystem.NPLA))
 
     w = (x[:,4] + x[:,5])/2.
     M = w - x[:,5]
     x[:,4] = list(map(f,w+M))
     x[:,5] = list(map(f,M)) 
-    x = x.flatten()
 
-    return x
+    return x.flatten()
 
-def _remove_constants(self, x):
-    indexes_remove = list(self.constant_params.keys())
+
+def _remove_constants(PSystem, x):
+    indexes_remove = list(PSystem.constant_params.keys())
     x=list(x)
     for index in sorted(indexes_remove, reverse=True):
         del x[index]
-    return x
+    return np.array(x)
 
 
 # -----------------------------------------------------
 # ADITIONAL FUNCTIONS TO MAKE LIFE EASIER
 
-def initial_walkers(self, ntemps=None, nwalkers=None, distribution=None,
-                    opt_data=None, threshold=1.0):
+def init_walkers(PSystem, distribution=None, opt_data=None, ntemps=None, 
+                    nwalkers=None,  threshold=1.0):
     """An useful function to easily create initial walkers.
     
     Keyword Arguments:
-        ntemps {int} -- Number of temperatures (default: {None})
-        nwalkers {int} -- number of walkers (default: {None})
-        distribution {str} -- A string option from:  {'Uniform' | 'Gaussian' | 'Picked'}
-        opt_data {str} -- Data from optimizers. Just used if Uniform or Picked
-            options are selected (default: {None})
+        distribution {str} -- A string option from:  {'Uniform' | 'Gaussian' | 'Picked' | 'Ladder'}
+        opt_data {dict} -- Data from optimizers. Just used if Uniform or Picked
+            options are selected (default: None)
+        ntemps {int} -- Number of temperatures (default: None)
+        nwalkers {int} -- number of walkers (default: None)
         threshold {float} -- A value between 0 and 1 to select the fraction of 
             solutions from opt_data to take into account.
-            For example: threshold=0.5 takes the best half of solutions from 
-            opt_dat (default: {1.0})
+            For example: threshold=0.3 takes the best 30% of solutions from 
+            opt_dat (default: 1.0)
     
     Returns:
         Array -- An array of shape (ntemps, nwalkers, dimension)
     """
 
-    if nwalkers < 2*self.NPLA*7:
-        sys.exit("Number of walkers must be >= 2*ndim, i.e., \n \
-            nwalkers >= {}.\n Stopped simulation!".format(2*self.NPLA*7))
+    if nwalkers < 2*PSystem.ndim:
+        sys.exit(f"Number of walkers must be >= 2*ndim, i.e., \n \
+            nwalkers >= {2*PSystem.ndim}.\n Stopped simulation!")
 
     if distribution.lower() == 'uniform':
-        return func_uniform(self, ntemps=ntemps, nwalkers=nwalkers)
+        return _func_uniform(PSystem, ntemps=ntemps, nwalkers=nwalkers)
 
-    if distribution.lower() in ("gaussian", "picked") and opt_data is not None:
-        assert(0.0 < threshold <= 1.0), f"threshold must be between 0 and 1!"
-        return _func_gp(self, distribution, ntemps=ntemps, nwalkers=nwalkers,
-                    opt_data=opt_data, threshold=threshold)
+    if opt_data is not None:
+        assert(0.0 < threshold <= 1.0), "threshold must be between 0 and 1!"
 
-    if distribution.lower() == 'smart':
-        return _func_smart(self, distribution, ntemps=ntemps, nwalkers=nwalkers,
-                    opt_data=opt_data, threshold=threshold)
+        if distribution.lower() in ("gaussian", "picked", "ladder"): 
+            
+            print("\n--> Selected distribution: {}".format(distribution))   
+            
+            return _func_from_opt(PSystem, distribution, ntemps=ntemps, nwalkers=nwalkers,
+                        opt_data=opt_data, threshold=threshold)
+
+        else:
+            text = ("--> Argument -distribution- does not match with any",
+            " supported distribution. Available options are:",
+            "\n *Uniform \n *Gaussian \n *Picked \n *Ladder" ,
+            "\n For the last three, please provide results from the ",
+            "optimizer routine through -opt_data- argument.")
+            sys.exit(" ".join(text))
 
     else:
-        text = ("--> Argument \'distribution\' does not match with any",
-        " supported distributions. Available options are:",
-        "\n *Uniform \n *Gaussian \n *Picked ",
-        "\n For the last two, please provide results from the ",
-        "optimizer routine.")
-        sys.exit(" ".join(text))
+        print("Arguments not understood")
+
        
 
-def func_uniform(self, ntemps=None, nwalkers=None):
+def _func_uniform(PSystem, ntemps=None, nwalkers=None):
     print("\n--> Selected distribution: Uniform")
     POP0 = []
-    for i in self.hypercube:
+    for i in PSystem.hypercube:
         linf = i[0]
         lsup = i[1]
 
         # Create uniform random walkers between boundaries
         RDM = np.random.uniform(linf , lsup, ntemps*nwalkers)
         POP0.append(RDM)
-    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.hypercube)) 
+    POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(PSystem.hypercube)) 
 
     return POP0
 
 
 
-def _func_gp(self, distribution, ntemps=None, nwalkers=None, 
+def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None, 
             opt_data=None, threshold=1.0):
 
-    print("\n--> Selected distribution: {}".format(distribution))
+    # Dictionary from optimizers
+    if type(opt_data) == dict:
+        x = opt_data['cube']
+        fun = opt_data['chi2']
+        opt_data = np.column_stack((fun, x))
 
     # Clean and sort results. Get just data inside threshold.
     # FIXME: There is a bug when opt_data is given from file. It must be
@@ -374,43 +424,40 @@ def _func_gp(self, distribution, ntemps=None, nwalkers=None,
     cut = int(len(opt_data)*threshold) # index of maximum chi2
     opt_data = opt_data[:cut]
 
-    params = np.array([x[1:] for x in opt_data])
-    print(f"    {len(opt_data)} of {original_len} solutions taken")
-
     POP0 = []
 
+
     if distribution.lower() == 'picked':
+        params = np.array([x[1:] for x in opt_data])
+        print(f"    {len(opt_data)} of {original_len} solutions taken")
+
         n_sols = len(params)
-        indexes = list(self.constant_params.keys())
 
         for _ in range(ntemps*nwalkers):
             current_index = np.random.choice(range(n_sols))
             current_solution =  params[current_index].tolist()
             
-            # Delete constant params
-            #for index in sorted(indexes, reverse=True):
-            #    del current_solution[index]
-
             perturbed_solution = []
             rdmu_b = np.random.uniform(0.0, 0.1)
+
             for par_idx, param in enumerate(current_solution):
-                # Take random numbers btw 3% from the solutions and the boundaries
-                #linf = (param - self.bounds[par_idx][0]) * np.random.uniform(0.0, 0.03)
-                #lsup = (self.bounds[par_idx][1] - param) * np.random.uniform(0.0, 0.03)
-                linf = (param - self.hypercube[par_idx][0]) * rdmu_b
-                lsup = (self.hypercube[par_idx][1] - param) * rdmu_b                
+                linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
+                lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b                
                 delta = np.random.uniform(param-linf, param+lsup)
 
                 perturbed_solution.append(delta)
             POP0.append(perturbed_solution)
-        POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(self.bounds))
+        POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(PSystem.bounds))
     
+
     if distribution.lower() == 'gaussian':
+        params = np.array([x[1:] for x in opt_data])
+        print(f"    {len(opt_data)} of {original_len} solutions taken")
+
         params = params.T
         i = 0
         for par_idx, param in enumerate(params):
-            # Initialize walkers avoiding the constant paremeters
-            #if par_idx not in list(self.constant_params.keys()):
+
             poptmp = [] 
             while len(poptmp) < ntemps*nwalkers:
                 # Calculate parameters for the gaussian distribution
@@ -422,34 +469,78 @@ def _func_gp(self, distribution, ntemps=None, nwalkers=None,
                 else:
                     rdm = np.random.normal(loc=mu,scale=sig)
 
-                #if self.bounds[i][0] <= rdm and rdm <= self.bounds[i][1]:
-                if self.hypercube[i][0] <= rdm and rdm <= self.hypercube[i][1]:
+                if PSystem.hypercube[i][0] <= rdm and rdm <= PSystem.hypercube[i][1]:
                     poptmp.append(rdm)
 
             POP0.append(poptmp)
             i += 1
-        POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(self.bounds))
+        POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(PSystem.bounds))
+
+
+    if distribution.lower() == 'ladder':
+        f = lambda x: x[1:]
+        parameters = list(map(f, opt_data ))
+        print(f"    {len(opt_data)} of {original_len} solutions taken")
+
+
+        for pt in range(ntemps):  # Iterates over chunks (temperatures)
+            #
+            parameters_sep = list(_chunks(parameters, ntemps-pt)) 
+            par_sep = parameters_sep[0]
+            #
+            
+            n_sols=len(par_sep)
+            par_sep_T = list(np.array(par_sep).T)
+            
+            par_sep_2 = np.array(par_sep_T).T
+            
+            # choose randomly an index in the chunk
+            current_index = np.random.choice(range(n_sols), nwalkers ) 
+            
+            for i in current_index:
+                current_solution = par_sep_2[i]
+                
+                perturbed_solution = []
+                rdmu_b = np.random.uniform(0.0, 0.1)
+
+                for par_idx, param in enumerate(current_solution):
+                    linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
+                    lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b
+                    delta = np.random.uniform(param-linf, param+lsup)
+
+                    perturbed_solution.append(delta)   
+            
+                POP0.append(perturbed_solution)
+        POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(PSystem.hypercube))  
+
 
     return POP0
 
-# TODO: Cambiar a Ladder
-def _func_smart(self, distribution, ntemps=None, nwalkers=None,
+"""
+def _func_ladder(PSystem, distribution, ntemps=None, nwalkers=None,
                     opt_data=None, threshold=None):
     print("\n--> Selected distribution: {}".format(distribution))      
     
+
+    #! Added to probe with dictinary
+    if type(opt_data) == dict:
+        x = opt_data['cube']
+        fun = opt_data['chi2']
+        opt_data = np.column_stack((fun, x))
+
     [opt_data.remove(res) for res in opt_data if res[0]>=1e+50]
-    acomodar = sorted(opt_data, key=lambda x: x[0])
-    original_len = len(acomodar)
+    opt_data = sorted(opt_data, key=lambda x: x[0])
+    original_len = len(opt_data)
 
     cut = int(len(acomodar)*threshold) # index of maximum chi2
-    acomodar = acomodar[:cut]
+    opt_data = opt_data[:cut]
 
     f = lambda x: x[1:]
-    parameters = list(map(f, acomodar ))
-    print(f"    {len(acomodar)} of {original_len} solutions taken")
-
+    parameters = list(map(f, opt_data ))
+    print(f"    {len(opt_data)} of {original_len} solutions taken")
+    
     #parameters_sep = list(_chunks(parameters, ntemps)) 
-    ##indexes = list(self.constant_params.keys())
+    ##indexes = list(PSystem.constant_params.keys())
 
     POP0 = []
     #for par_sep in parameters_sep:  # Iterates over chunks (temperatures)
@@ -481,10 +572,10 @@ def _func_smart(self, distribution, ntemps=None, nwalkers=None,
             rdmu_b = np.random.uniform(0.0, 0.1)
             for par_idx, param in enumerate(current_solution):
                 # Take random numbers btw 3% from the solutions and the boundaries
-                #linf = (param - self.bounds[par_idx][0]) * rdmu_b
-                #lsup = (self.bounds[par_idx][1] - param) * rdmu_b
-                linf = (param - self.hypercube[par_idx][0]) * rdmu_b
-                lsup = (self.hypercube[par_idx][1] - param) * rdmu_b
+                #linf = (param - PSystem.bounds[par_idx][0]) * rdmu_b
+                #lsup = (PSystem.bounds[par_idx][1] - param) * rdmu_b
+                linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
+                lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b
                 delta = np.random.uniform(param-linf, param+lsup)
 
                 perturbed_solution.append(delta)   
@@ -494,10 +585,9 @@ def _func_smart(self, distribution, ntemps=None, nwalkers=None,
         
         #print('-------')    
 
-    POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(self.hypercube))  
+    POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(PSystem.hypercube))  
     return POP0
-
-
+"""
 
 
 def _chunks(l, n):
@@ -508,7 +598,7 @@ def _chunks(l, n):
         yield l[si:si+(d+1 if i < r else d)]
 
 
-def mcmc_summary(self, hdf5_file, burning=0.0, fthinning=1, verbose=True):
+def mcmc_summary(PSystem, hdf5_file, burning=0.0, fthinning=1, verbose=True):
     """Prints a summary of the mcmc and returns the posteriors with 1-sigma
     uncertainties corresponding to the median and 16th and 84th quantiles.
     
@@ -597,8 +687,8 @@ def mcmc_summary(self, hdf5_file, burning=0.0, fthinning=1, verbose=True):
     posteriors = {}
 
     # Convert normalized chains to physical values
-    chains = np.array([[cube_to_physical(self, x) for x in chains[w,:,:]] for w in range(nw) ])
-    chains = np.array([[_remove_constants(self, x) for x in chains[w,:,:]] for w in range(nw) ])
+    chains = np.array([[cube_to_physical(PSystem, x) for x in chains[w,:,:]] for w in range(nw) ])
+    chains = np.array([[_remove_constants(PSystem, x) for x in chains[w,:,:]] for w in range(nw) ])
     #
 
     for i, name in enumerate(list(colnames.split())):
@@ -631,12 +721,16 @@ def mcmc_summary(self, hdf5_file, burning=0.0, fthinning=1, verbose=True):
 
 
 
-def extract_best_solutions(hdf5_filename):
+def extract_best_solutions(hdf5_filename, write_file=True):
     """Run over the chains of the mcmc and extract the best solution at each 
         iteration.
     
     Arguments:
         hdf5_filename {hdf5 file} -- A file with the mcmc results.
+
+    Return:
+        A list of items sorted by log-likelihood in the format: 
+        [(loglike, array(params)), ...] , where params are in hypercube units
     """
 
     f = h5py.File(hdf5_filename, 'r')
@@ -650,31 +744,32 @@ def extract_best_solutions(hdf5_filename):
     f.close()
 
     # Sort solutions by chi2: from better to worst
-    tupla = zip(log1_chi2[:index+1], best[:index+1])
-    tupla_reducida = list(dict(tupla).items())
+    tupla = zip(log1_chi2[:index+1],best[:index+1])
+    tupla_reducida = list(dict(tupla).items())   # Remove possible repeated data
     sorted_by_chi2 = sorted(tupla_reducida, key=lambda tup: tup[0])[::-1] 
 
-    best_file = '{}.best'.format(hdf5_filename.split('.')[0])
-    head = "#Mstar[Msun]      Rstar[Rsun]     Nplanets"
-    writefile(best_file, 'w', head, '%-10s '*3 +'\n')
-    head = "#{}            {}           {}\n".format(mstar, rstar, NPLA)
-    writefile(best_file, 'a', head, '%-10s '*3 +'\n')
+    if write_file:
+        best_file = '{}.best'.format(hdf5_filename.split('.')[0])
+        head = "#Mstar[Msun]      Rstar[Rsun]     Nplanets"
+        writefile(best_file, 'w', head, '%-10s '*3 +'\n')
+        head = "#{}            {}           {}\n".format(mstar, rstar, NPLA)
+        writefile(best_file, 'a', head, '%-10s '*3 +'\n')
 
-    
-    #head = "#-Chi2  " + " ".join([
-    #    "m{0}[Mearth]  Per{0}[d]  ecc{0}  inc{0}[deg]  arg{0}[deg]  M{0}[deg]\
-    #    Ome{0}[deg] ".format(i+1) for i in range(NPLA)]) + '\n'
-    head = "#-chi2   " + names #"  ".join([na for na in names.split()])
+        
+        #head = "#-Chi2  " + " ".join([
+        #    "m{0}[Mearth]  Per{0}[d]  ecc{0}  inc{0}[deg]  arg{0}[deg]  M{0}[deg]\
+        #    Ome{0}[deg] ".format(i+1) for i in range(NPLA)]) + '\n'
+        head = "#-chi2   " + names #"  ".join([na for na in names.split()])
 
-    writefile(best_file, 'a', head, '%-16s'+' %-11s'*(
-                                            len(head.split())-1) + '\n')
-    
-    for _, s in enumerate(sorted_by_chi2):
-        texto =  ' ' + str(s[0])+ ' ' + \
-                    " ".join(str(i) for i in s[1]) 
-        writefile(best_file, 'a', texto,  '%-30s' + \
-                    ' %-11s'*(len(texto.split())-1) + '\n')
-    print(f'--> Best solutions from the {hdf5_filename} will be written at: {best_file}')
+        writefile(best_file, 'a', head, '%-16s'+' %-11s'*(
+                                                len(head.split())-1) + '\n')
+        
+        for _, s in enumerate(sorted_by_chi2):
+            texto =  ' ' + str(s[0])+ ' ' + \
+                        " ".join(str(i) for i in s[1]) 
+            writefile(best_file, 'a', texto,  '%-30s' + \
+                        ' %-11s'*(len(texto.split())-1) + '\n')
+        print(f'--> Best solutions from the {hdf5_filename} will be written at: {best_file}')
 
     return sorted_by_chi2
 
@@ -756,14 +851,14 @@ def gelman_rubin(chains, nchunks_gr=10, thinning=10, names=None):
     return GR_statistic
 
 
-def geweke(self, hdf5_file=None, chains=None, names=None, burning=0):
+def geweke(PSystem, hdf5_file=None, chains=None, names=None, burning=0):
     # Geweke criterion
     # https://rlhick.people.wm.edu/stories/bayesian_5.html
     # https://pymc-devs.github.io/pymc/modelchecking.html
     
     assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
 
-    ##ndim = len(self.bounds)
+    ##ndim = len(PSystem.bounds)
 
     if hdf5_file:
         f = h5py.File(hdf5_file, 'r')
@@ -804,7 +899,7 @@ def geweke(self, hdf5_file=None, chains=None, names=None, burning=0):
     # Make a z-test for the 20 chunks of the second half for
     # all the dimensions
     Z = {}
-    for dimension in range(self.ndim):
+    for dimension in range(PSystem.ndim):
         ztas = []
         for sub20 in subsets_20:
             z = _z_score(subset_first_10[:,:,dimension], 
@@ -815,20 +910,18 @@ def geweke(self, hdf5_file=None, chains=None, names=None, burning=0):
     return Z
 
 
-
-def load_pickle(pickle_file):
-    """[summary]
-    
-    Arguments:
-        pickle_file {str} -- File name of planetary system object
-    
-    Returns:
-        obj -- returns a planetary system object
-    """
-    with open(f'{pickle_file}', 'rb') as input:
-        pickle_object = pickle.load(input)
-    return pickle_object
-
+#def load_pickle(pickle_file):
+#    """[summary]
+#    
+#    Arguments:
+#        pickle_file {str} -- File name of planetary system object
+#    
+#    Returns:
+#        obj -- returns a planetary system object
+#    """
+#    with open(f'{pickle_file}', 'rb') as input:
+#        pickle_object = pickle.load(input)
+#    return pickle_object
 
 
 def _z_score(theta_a, theta_b):
@@ -837,7 +930,6 @@ def _z_score(theta_a, theta_b):
         + np.var(theta_b))
     
     return z
-
 
 
 def intervals(frontiers, flat_params):
@@ -866,16 +958,16 @@ def intervals(frontiers, flat_params):
             TF.append(True)
         else:
             TF.append(False)
+            return TF
     return TF
 
 
-
-def writefile(archivo , escritura , texto, align):
+def writefile(_file , writing , text, align):
     
-    txs = tuple(texto.split())
+    txs = tuple(text.split())
     
-    with open(archivo, escritura) as myfile:
-        myfile.write(align % txs)
-        myfile.close()
+    with open(_file, writing) as outfile:
+        outfile.write(align % txs)
+        outfile.close()
 
     return
