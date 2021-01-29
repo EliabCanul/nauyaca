@@ -1,144 +1,176 @@
-from scipy.optimize import differential_evolution
-import multiprocessing as mp
-from multiprocessing import Pool
+#import multiprocessing as mp
 import time 
 import datetime
 import numpy as np
-from scipy.optimize import minimize
-import h5py
 import sys
-from contextlib import closing
-import ptemcee as pt
 from dataclasses import dataclass
-from utils import *
+from multiprocessing import Pool
+from .utils import * # Miztli: from NAU.utils import *
+from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants # Miztli: from NAU.utils import writefile, intervals
+import copy
 import warnings
+from scipy.optimize import differential_evolution
+from scipy.optimize import minimize
 warnings.filterwarnings("ignore")
 
-import matplotlib.pyplot as plt
-from plots import Plots
+import h5py
+import ptemcee as pt
+from contextlib import closing
 
+__doc__ = "MCMC + NM"
+
+__all__ = ["Optimizers", "MCMC"]
+
+# TODO: Output files should be saved at specified directory
+
+
+
+# ------------------------ O P T I M I Z E R ------------------------------
+
+f = lambda x: x-360 if x>360 else (360+x if x<0 else x)
 @dataclass
 class Optimizers:
-    """Do whatever you want with the TTVs data.
+
+    """
+    Fit the TTVs running sequentially the algorithms:
+    * Differential evolution 
+    * Powell
+    * Nelder Mead
     """
 
-    # ------------------------ O P T I M I Z E R ------------------------------
+    @staticmethod
+    def _differential_evolution_nelder_mead(PSystem, base_name, indi=0):
+        base_name_cube, base_name_phys = base_name
+        ##hypercube = [[0.,1.] for _ in range(len(PSystem.bounds)) ] # hypercube
+        
+        """ 
+                        -----Differential Evolution----- 
+        """
+        # From doc: To improve your chances of finding a global minimum 
+        # use higher popsize values, with higher mutation and (dithering), 
+        # but lower recombination values
+        DE = differential_evolution( 
+                log_likelihood_func, PSystem.hypercube, #PSystem.bounds,  # hypercube
+                disp=False, seed=np.random.seed(),
+                popsize=100, maxiter=5, polish=False,
+                mutation=(1.5,1.9), recombination=0.2,
+                args= (PSystem,))
+        x0 = DE.x
+        f0 = DE.fun
 
-    def differential_evolution_nelder_mead(self, bounds, base_name, indi=0):
+        """
+                            -----Powell-----
+        """
+        PO = minimize(
+            log_likelihood_func, list(x0), method= 'Powell', 
+            bounds=PSystem.hypercube, #PSystem.bounds,  # hypercube
+            options={'maxiter':15000, 'maxfev':15000, 
+                     'xtol':0.000001, 'ftol':0.1, 'disp':False, 'adaptive':True},
+            args=(PSystem,))
+        x1 = PO.x
+        f1 = PO.fun
 
-        f0_before = np.inf
-        original_bounds = bounds
-        # Recursively reduce the search radius to avoid many local minima
-        for i in range(4): 	
+        """ 
+                            -----Nealder-Mead-----
+        """
+        NM = minimize(
+            log_likelihood_func, list(x1), method= 'Nelder-Mead', 
+            options={'maxiter':15000, 'maxfev':15000,
+                     'xatol':0.000001, 'fatol':0.1, 'disp':False, 'adaptive':True},
+            args=(PSystem,))
+        x2 = NM.x
+        f2 = NM.fun
+        
+        # Verbose
+        print(f" {indi+1} | DE: {f0 :.3f}  PO: {f1 :.3f}  NM: {f2 :.3f}")
 
-            """ -----Differential Evolution-----
-            From doc: To improve your chances of finding a global minimum 
-            use higher popsize values, with higher mutation and (dithering), 
-            but lower recombination values"""
-            result = differential_evolution( 
-                    calculate_chi2, bounds, disp=False, seed=np.random.seed(),
-                    popsize=int(50/(i+1.)), maxiter=15, polish=False, 
-                    mutation=(1.2,1.9), recombination=0.5,
-                    args= (self,))
-                    # popsize=30, maxiter=100, polish=True, mutation=(1.2,1.9),
-                    # recombination=0.7) #50,30
-            x0 = result.x
-            f0 = result.fun
+        # Reconstruct flat_params adding the constant values
+        x2_cube = list(x2)  
+        #for k, v in PSystem.constant_params.items(): 
+        #    x2_cube.insert(k, v)
 
-            if f0 < f0_before:
-                # Reduce the boundaries by a factor 4 around the previous
-                # best solution.
-                
-                length = [(bounds[j][1] - bounds[j][0])*.33 
-                            for j in range(len(bounds))]
-                
-                bounds = [[max(x0[k]-length[k], original_bounds[k][0]), 
-                           min(x0[k]+length[k], original_bounds[k][1])] 
-                            for k in range(len(length))]
-                
-                f0_before = f0
-            else:
-                break
-
-        """ -----Nealder-Mead-----
-        Refine the solution starting from the best solution found in DE"""
-        res = minimize(
-            calculate_chi2, list(x0), method='Nelder-Mead', 
-            options={'maxiter':2000, 'maxfev':20000, 'disp':False},
-            args=(self,))
-        x1 = res.x
-        f1 = res.fun
-
-		# Return the best result from the two methods above
-        if f1 < f0 and not False in intervals(self, x1):
-            info = '{} \t {} \n'.format(str(np.round(f1,5)),
-                    "  ".join([str(np.round(it,5)) for it in x1]))
-            print(indi+1, '\t   ', f1)
-
-            writefile( base_name, 'a', info, '%-15s'
-                            +' %-11s'*(len(info.split())-1) + '\n')
-            
-            return (f1, list(x1))
-
-        else:
-            info = '{} \t {} \n'.format(str(np.round(f0,5)), 
-                    "  ".join([str(np.round(it,5)) for it in x0]))
-            print(indi+1, '\t   ', f0)
-            writefile( base_name, 'a', info, '%-15s'
-                            +' %-11s'*(len(info.split())-1) + '\n')
-            
-            return (f0, list(x0))
+        # Write results in output file
+        info = '{} \t {} \n'.format(str(f2), "  ".join([str(it ) for it in x2_cube]))
+        
+        writefile( base_name_cube, 'a', info, '%-30s'
+                        +' %-11s'*(len(info.split())-1) + '\n')
 
 
-    def run_optimizers(self, cores=1, niter=1, base_name='OPT_'):
+        #---------------- 
+        # Convert from cube to physical values and remove constants
+        x2_phys = cube_to_physical(PSystem, x2)
+
+        x2_phys = _remove_constants(PSystem, x2_phys)
+
+        # Write results in output file
+        #info = '{} \t {} \n'.format(str(f2), "  ".join([str(it ) for it in x2_phys]))
+        info = ' ' + str(f2) + ' ' + "  ".join([str(it ) for it in x2_phys]) 
+        writefile( base_name_phys, 'a', info, '%-30s'
+                        +' %-11s'*(len(info.split())-1) + '\n')
+
+        #---------------- 
+
+        return ([f2] + list(x2_cube))
+
+
+    @classmethod
+    def run_optimizers(cls, PSystem,
+                        nsols=1,
+                        cores=1,  
+                        suffix=''):
+        """[summary]
+        
+        Arguments:
+            PSystem {[type]} -- [description]
+        
+        Keyword Arguments:
+            nsols {int} -- Number of solutions to be performed (default: 1)
+            cores {int} -- Number of cores to run in parallel (default: 1)
+            suffix {str} -- Suffix of the outpu file. (default: '')
+        
+        Returns:
+            array -- An array with the chi**2 and the planetary solutions for 
+            each planet. Also an ascci file is saved with the same information.
+        """
 
         ta = time.time()
         now = datetime.datetime.now()
 
-        print("\n =========== OPTIMIZATION ===========\n")
-        print("Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
-        print('Performing ', niter, ' iterations using ', cores, ' cores')
+        print( "\n =========== OPTIMIZATION ===========\n")
+        print( "--> Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
+        print(f"--> Finding {nsols} solutions using {cores} cores")
 
         # Output file name
-        base_name= base_name + '{}'.format(self.system_name)
+        #base_name = '{}'.format(PSystem.system_name) + suffix + ".opt"
+        base_name_cube = f'{PSystem.system_name}_cube' + suffix + ".opt"
+        base_name_phys = f'{PSystem.system_name}_phys' + suffix + ".opt"
 
-        writefile( base_name, 'w', '#Beggins the optimization routine\n', 
-                        '%-13s'*4 + '\n')
-        header = '#Chi2 ' + " ".join(["Mass{0}[Me]       Per{0}[d]       k{0} \
-                                     inc{0}[deg]         h{0}        M{0}[deg]\
-                                     Ome{0}[deg]  ".format(i+1) for i in 
-                                     range(self.NPLA)]) 
-        writefile(base_name, "a", header, '%-15s'
-                        +' %-11s'*(len(header.split())-1) + '\n')
-
-        print('Results will be saved at: ', base_name)
-
-        print('- - - - - - - - - - - - - - - -')
-        print('Iteration    chi2_value'        )
-        print('- - - - - - - - - - - - - - - -')
-        ta = time.time()
+        # Write headers in both files
+        header = '#Chi2 ' + " ".join([i for i in PSystem.params_names.split()])
         
+        writefile(base_name_cube, "w", header, '%-15s'+' %-11s'*(len(header.split())-1)+'\n')
+        writefile(base_name_phys, "w", header, '%-15s'+' %-11s'*(len(header.split())-1)+'\n')
+
+        # Verbose
+        print("--> Results will be saved at:")
+        print(f'     * {base_name_cube} (normalized)')
+        print(f'     * {base_name_phys} (physical)')
+        print('- - - - - - - - - - - - - - - - - - - - -')
+        print('Solution  |   chi square from optimizers'        )
+        print('- - - - - - - - - - - - - - - - - - - - -')
+
         # Run in parallel
         with warnings.catch_warnings(record=True) as w: 
             warnings.simplefilter("always")
 
-            pool = mp.Pool(processes=cores)
-            results = [pool.apply_async(self.differential_evolution_nelder_mead,
-                        args=(self.bounds, base_name,i)) for i in range(niter)]
+            pool = Pool(processes=cores)
+            results = [pool.apply_async(cls._differential_evolution_nelder_mead,
+                        args=(PSystem, [base_name_cube,base_name_phys], i)) for i in range(nsols)]
             output = [p.get() for p in results]		
-        print('Time elapsed in optimization: ', 
-              (time.time() - ta)/60., 'minutes')
+        pool.terminate()
+        print(f'Time elapsed in optimization: {(time.time() - ta)/60 :.3f} minutes')
 
         return output        
-
-
-
-
-
-
-
-
-
 
 
 
@@ -146,155 +178,206 @@ class Optimizers:
 
 @dataclass
 class MCMC:
-    """Make an MCMC using Parallel-Tempering"""
 
-    def run_mcmc(self, Itmax=100, conver_steps=2, cores=1, suffix='', 
-                     nwalkers=None, ntemps=None, Tmax=None, betas=None, 
-                     bounds=None, pop0=None):
+    """Perform an MCMC using Parallel-Tempering"""
+
+    @classmethod
+    def run_mcmc(cls, PSystem, 
+                Itmax=100, # run_time ??
+                conver_steps=2, 
+                cores=1,
+                nwalkers=None, 
+                ntemps=None, 
+                Tmax=None, 
+                betas=None, 
+                pop0=None, 
+                verbose = True,
+                suffix=''): 
+        # FIXME: does is it necessary nwalkers, ntemps? or it can be determined
+        # from pop0
+        """
+        Run the parallel-tempering algorithm
+        """
 
         if ntemps is not None:
-            self.ntemps = ntemps
+            cls.ntemps = ntemps
         if betas is not None:
-            self.ntemps = len(betas)
+            cls.ntemps = len(betas)
 
-        self.nwalkers = nwalkers
-        self.Itmax = Itmax
-        self.conver_steps = conver_steps
-        self.cores = cores
-        self.bounds = bounds #Tal vez bounds se puede mitir porque self.bounds
-        self.betas = betas
-        self.Tmax = Tmax
-        self.pop0 = pop0
+        cls.nwalkers = nwalkers
+        cls.Itmax = Itmax
+        cls.conver_steps = conver_steps
+        cls.cores = cores
+        cls.betas = betas
+        cls.Tmax = Tmax
+        cls.pop0 = pop0
 
-        if self.nwalkers < 2*self.NPLA*7:
-            sys.exit("Number of walkers must be >= 2*ndim, i.e., \
-                nwalkers = {}.\n Stopped simulation!".format(2*self.NPLA*7))
+        ###ndim = len(PSystem.bounds) # Number of dimensions
+        if cls.nwalkers < PSystem.ndim:
+            sys.exit(f"Number of walkers must be >= 2*ndim, i.e., \
+                nwalkers = {2*PSystem.NPLA*7}.\n Stopped simulation!")
 
         ti = time.time()
         now = datetime.datetime.now()
         print("\n =========== PARALLEL-TEMPERING MCMC ===========\n")
         print("--> Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
 
+        print("--> Reference epoch of the solutions: ", PSystem.T0JD, " [JD]")
+        # TODO: print a summary of the input parameters for MCMC!
         """ 
                 Create and set the hdf5 file for saving the output.
         """
+        
         # hdf5 file name to save mcmc data
-        self.hdf5_filename = "{}{}.hdf5".format(self.system_name, suffix) 
-        print('--> Results will be saved at: ', self.hdf5_filename, '\n')
+        # TODO: hdf5_filename should be by default the name of the planetary 
+        # system, but also another name can be used. Set an file_name keyword?
+        # It's usefull for restarting mcmc
+        cls.hdf5_filename = f"{PSystem.system_name}{suffix}.hdf5"
+        print('--> Results will be saved at: ', cls.hdf5_filename, '\n')
         
         # Create an h5py file
-        self.set_hdf5(self.hdf5_filename)
+        cls._set_hdf5(cls, PSystem, cls.hdf5_filename)
 
         """
-                Run the MCMC usin parallel-tempering algorithm
+                Run the MCMC using parallel-tempering algorithm
         """
         # Default values in ptemcee, 
         # Do not change it at least you have read Vousden et al. (2016):
-        nu = 100. #100./self.nwalkers 
-        t0 = 1000. #1000./self.nwalkers
-        a_scale= 2.0
+        nu = 100. #/nwalkers 
+        t0 = 10000. #/nwalkers
+        a_scale = 10
 
-        stopflag = 0 # Flag to stop MCMC when convergence is reached.
-        with closing(Pool(processes=self.cores)) as pool:
+        with closing(Pool(processes=cls.cores)) as pool:
 
             sampler = pt.Sampler(
-                    nwalkers=self.nwalkers, dim=self.NPLA*7, logp=logp, 
-                    logl=calculate_chi2, ntemps=self.ntemps, betas=self.betas,
-                    adaptation_lag = t0, adaptation_time=nu, a=a_scale, 
-                    Tmax=self.Tmax, pool=pool, loglargs=(self,), 
-                    loglkwargs={'flag':'MCMC'})
+                                nwalkers=cls.nwalkers,
+                                dim=PSystem.ndim,
+                                logp=cls._logp, 
+                                logl=log_likelihood_func,
+                                ntemps=cls.ntemps,
+                                betas=cls.betas,
+                                adaptation_lag = t0,
+                                adaptation_time=nu,
+                                a=a_scale, 
+                                Tmax=cls.Tmax,
+                                pool=pool,
+                                loglargs=(PSystem,), 
+                                logpkwargs={'psystem':PSystem},
+                                loglkwargs={'flag':'MCMC'})
 
             index = 0
-            autocorr = np.empty( self.nsteps )
-            old_tau = np.inf
+            autocorr = np.empty( cls.nsteps )
+            record_meanchi2 = []
+            # print initial temperature ladder???
+            
             # thin: The number of iterations to perform between saving the 
             # state to the internal chain.
             for iteration, s in enumerate(
-                                sampler.sample(p0=pop0, iterations=self.Itmax, 
-                                thin=self.conver_steps, storechain=True, 
-                                adapt=True, swap_ratios=False )):
-                #print("Starts it", (iteration+1) % self.conver_steps)
-                if (iteration+1) % self.conver_steps :
+                                sampler.sample(p0=pop0, iterations=cls.Itmax, 
+                                thin=cls.conver_steps, storechain=True, 
+                                adapt=True, swap_ratios=False)):
+
+                if (iteration+1) % cls.conver_steps :
                     continue
 
                 max_value, max_index = max((x, (i, j))
                                 for i, row in enumerate(s[2][:])
                                 for j, x in enumerate(row))
 
-                # get_autocorr_time:  Returns a matrix of autocorrelation 
+                # get_autocorr_time, returns a matrix of autocorrelation 
                 # lengths for each parameter in each temperature of shape 
-                # ``(Ntemps, Ndim)``.
-                tau = sampler.get_autocorr_time()#[0]
+                # ``(Ntemps, ndim)``.
+                tau = sampler.get_autocorr_time()
+                mean_tau = np.mean(tau)
+                # tswap_acceptance_fraction, returns an array of accepted 
+                # temperature swap fractions for each temperature; 
+                # shape ``(ntemps, )
+                # nswap_accepted/nswap
                 swap = list(sampler.tswap_acceptance_fraction)
 
-                print("--------- Iteration: ", iteration +1)
-                print(" <tau> :", np.mean(tau))
-                print(" acceptance fraction Temp 0: ", 
-                        round(np.mean(sampler.acceptance_fraction[0,:]),5) )
-                # print 'accep swap:', swap
-                # print 'betas:', sampler.betas
-                # print '<posterior>: ', np.mean(s[1][0][:])
-                print(' <likelihood>: ', np.mean(s[2][0][:]))
-                print(' better posterior:', max_index,  max_value )
-                autocorr[index] = np.mean(tau)
+                # acceptance_fraction, matrix of shape ``(Ntemps, Nwalkers)`` 
+                # detailing the acceptance fraction for each walker.
+                # nprop_accepted/nprop
+                acc0 = sampler.acceptance_fraction[0,:]
+
+                xbest = s[0][max_index[0]][max_index[1]]
+
+                #current_meanposterior = np.mean(s[1][0][:])
+                current_meanchi2 = np.mean(s[2][0][:])
+                record_meanchi2.append(current_meanchi2)
+                std_meanchi2 = np.std(record_meanchi2[int(index/2):])
+
+                # Output in terminal
+                if verbose:
+                    print("--------- Iteration: ", iteration + 1)
+                    print(" Mean tau:", round(mean_tau, 3))
+                    print(" Accepted swap fraction in Temp 0: ", round(swap[0],3))
+                    print(" Mean acceptance fraction Temp 0: ", round(np.mean(acc0),3))
+                    #print(" Mean posterior: ", round(current_meanposterior, 6))
+                    print(" Mean likelihood: ", round(current_meanchi2, 6))
+                    print(" Better Chi2: ", max_index,  round(max_value,6))
+                    print(" Current mean Chi2 dispersion: ", round(std_meanchi2, 6))
+                    autocorr[index] = mean_tau
 
                 """
                                 Save data in hdf5 File
                 """
-                self.save_mcmc(sampler, self.hdf5_filename, autocorr, 
-                                index, tau, max_value, swap, max_index, 
-                                iteration, s)
-                
-                """
-                                Make figure of TTVs
-                """
-                mejor = [(max_value, list(s[0][max_index[0]][max_index[1]]) )]
-                
-                Plots.plot_TTVs(self, mejor )  
-                plt.savefig("TTVs_MCMC.png")
-                plt.close()
-
-                chunk = int((iteration + 1)/self.conver_steps)  
-                Plots.plot_hist(self, sampler.chain[0,:,int(index/4):chunk,:])  
-                plt.savefig("Hist_MCMC.png")
-                plt.close()
+                # Add the constant parameters to save the best solutions in the
+                # current iteration. It is not applicable to chains in the mcmc
+                #for k, v in sorted(PSystem.constant_params.items(), key=lambda j:j[0]):
+                #    xbest = np.insert(xbest, k, v)
+                    
+                # shape for chains is: (temps,walkers,steps,dim)
+                # It's worth saving temperatures others than 0???
+                cls._save_mcmc(cls.hdf5_filename, sampler.chain[:,:,index,:], 
+                            xbest, sampler.betas, autocorr, index, mean_tau, 
+                            max_value, swap, max_index, iteration, current_meanchi2)
 
                 """
                                 CONVERGENCE CRITERIA
                 Here you can write your favorite convergency criteria 
-                xxxxxxxxxx
                 """
+                ##geweke()
 
-                old_tau = tau  
-                index += 1
-                print(' Elapsed time: ', round((time.time() - ti)/60.,4), 'min')                
-                if (index+1)*conver_steps > self.Itmax:
-                    print('\n\n--> Maximum number of iterations \
-                                    reached in MCMC\n')
+                if verbose:
+                    print(' Elapsed time: ', round((time.time() - ti)/60.,4),'min')  
+
+                index += 1              
+                if (index+1)*conver_steps > cls.Itmax:
+                    print('\n--> Maximum number of iterations reached in MCMC')
                     break				
-
-            #pool.terminate()
 
         """
         Extract best solutions from hdf5 file and write it in ascci
         """
-        self.extract_best_solutions(self.hdf5_filename)
-        
+        #cls.
+        extract_best_solutions(cls.hdf5_filename)
+
+        print("--> Reference epoch of the solutions: ", PSystem.T0JD, " [JD]")
         print('--> Iterations performed: ', iteration +1)
-        print('--> Time elapsed in MCMC:', round((time.time() - ti)/60.,4), 
+        print('--> Elapsed time in MCMC:', round((time.time() - ti)/60.,4), 
                     'minutes')
 
         return sampler
     
 
-    def set_hdf5(self, hdf5_filename):
+    def _set_hdf5(self, PSystem, hdf5_filename):
+
         nsteps = -(-self.Itmax // self.conver_steps)
         self.nsteps = nsteps
 
         with h5py.File(hdf5_filename, 'w') as newfile:
             # Empty datasets
             NCD = newfile.create_dataset
-            NCD('CHAINS', (self.ntemps, self.nwalkers, nsteps, self.NPLA*7), 
+
+            # SHOULD INCLUDE INFO OF THE CONSTANT PARAMS 
+            # INCLUDE BOUNDARIES
+            
+            # System name
+            newfile['NAME'] = PSystem.system_name
+
+            # shape for chains is: (temps,walkers,steps,dim)
+            NCD('CHAINS', (self.ntemps, self.nwalkers, nsteps, len(PSystem.bounds)),
                         dtype='f8', compression= "lzf")
             NCD('AUTOCORR', (nsteps,), dtype='f8', compression="gzip", 
                         compression_opts=4)
@@ -308,7 +391,7 @@ class MCMC:
             NCD('ITER_LAST', (1,), dtype='i8')
 
             # Save the best solution per iteration
-            NCD('BESTSOLS', (nsteps, self.NPLA*7,), dtype='f8', 
+            NCD('BESTSOLS', (nsteps, PSystem.ndim,), dtype='f8',  # PSystem.NPLA*7,
                         compression="gzip", compression_opts=4)
             NCD('BESTCHI2', (nsteps,), dtype='f8', 
                         compression="gzip", compression_opts=4)
@@ -318,85 +401,99 @@ class MCMC:
             # Constants
             NCD('POP0', self.pop0.shape, dtype='f8', 
                         compression="gzip", compression_opts=4)[:] = self.pop0
-            NCD('BOUNDS', np.array(self.bounds).shape, 
-                        dtype='f8')[:] = self.bounds
+            NCD('BOUNDS', np.array(PSystem.bounds).shape, 
+                        dtype='f8')[:] = PSystem.bounds  
+            # TODO: Include parameterized bounds!!!  
+            NCD('NDIM', (1,), dtype='i8')[:] = PSystem.ndim
             NCD('NTEMPS', (1,), dtype='i8')[:] = self.ntemps
             NCD('NWALKERS', (1,), dtype='i8')[:] = self.nwalkers
             NCD('CORES', (1,), dtype='i8')[:] = self.cores
             NCD('ITMAX', (1,), dtype='i8')[:] = self.Itmax
             NCD('CONVER_STEPS', (1,), dtype='i8')[:] = self.conver_steps
+            NCD('REF_EPOCH', (1,), dtype='i8')[:] = PSystem.T0JD
 
+            # COL_NAMES are the identifiers of each dimension
+            newfile['COL_NAMES'] = PSystem.params_names
+            
             # Parameters of the simulated system
-            NCD('NPLA', (1,), dtype='i8')[:] = self.NPLA
-            NCD('MSTAR', (1,), dtype='f8')[:] = self.mstar
-            NCD('RSTAR', (1,), dtype='f8')[:] = self.rstar
+            NCD('NPLA', (1,), dtype='i8')[:] = PSystem.NPLA
+            NCD('MSTAR', (1,), dtype='f8')[:] = PSystem.mstar
+            NCD('RSTAR', (1,), dtype='f8')[:] = PSystem.rstar
         
         return
 
 
     @staticmethod
-    def save_mcmc(
-            sampler, hdf5_filename, autocorr, index, tau, max_value, 
-            swap, max_index, iteration, s):
-        Tg = time.time()
-        print(' Writing...')
-        with h5py.File(hdf5_filename, 'r+') as newfile:
+    def _save_mcmc(hdf5_filename, current_sampler_chain, xbest, sampler_betas, autocorr, 
+                   index, tau_mean, max_value, swap, max_index, iteration, meanchi2):
+        
+        #print(' Saving...')
+        ta = time.time()  # Monitor the time wasted in saving..
+        with h5py.File(hdf5_filename, 'r+') as file:
             # shape for chains is: (temps,walkers,steps,dim)
-            newfile['CHAINS'][:,:,index,:] = sampler.chain[:,:,index,:]
-            newfile['AUTOCORR'][:] = autocorr
-            newfile['INDEX'][:] = index
-            newfile['BETAS'][index,:] = sampler.betas
-            newfile['TAU_PROM0'][index] = np.mean(tau)
-            newfile['ACC_FRAC0'][index,:] = swap
-            newfile['ITER_LAST'][:] = iteration + 1
+            file['CHAINS'][:,:,index,:] = current_sampler_chain
+            file['BETAS'][index,:] = sampler_betas
+            file['AUTOCORR'][:] = autocorr
+            file['INDEX'][:] = index
+            file['TAU_PROM0'][index] = tau_mean #repetido con autocorr
+            file['ACC_FRAC0'][index,:] = swap
+            file['ITER_LAST'][:] = iteration + 1
             # Best set of parameters in the current iteration
-            newfile['BESTSOLS'][index,:] = s[0][max_index[0]][
-                                                max_index[1]]
+            file['BESTSOLS'][index,:] = xbest
             # Chi2 of that best set of parameters
-            newfile['BESTCHI2'][index] = max_value
-            newfile['MEANCHI2'][index] = np.mean(s[2][0][:])
-
-        print(' Saved!')
-        print(' Time elapsed in saving: ', round(time.time()-Tg, 4), ' sec')
-
+            file['BESTCHI2'][index] = max_value
+            file['MEANCHI2'][index] = meanchi2
+        print(f' Saving time: {(time.time() - ta) :.5f} sec')
         return
 
 
     @staticmethod
-    def extract_best_solutions(hdf5_filename):
-        f = h5py.File(hdf5_filename, 'r')
-        mstar = f['MSTAR'][()][0]
-        rstar = f['RSTAR'][()][0]
-        NPLA = f['NPLA'][()][0]
-        best= f['BESTSOLS'][()]  #.value[:index+1]
-        log1_chi2 = f['BESTCHI2'][()]  #.value[:index+1]
+    def restart_mcmc(PSystem, from_hdf5_file='', Itmax=100, conver_steps=2, cores=1, 
+        suffix='_rerun', restart_ladder=False): #  ntemps=None, Tmax=None,
+        
+        assert suffix != '', "New HDF5 file name cannot coincide with previous\
+             run. Try changing -suffix- name."
+        
+        #TODO: new hdf5 file must coincide with hdf5_file + suffix
+        
+        print("\n=========== RESTARTING MCMC ===========\n")
+        print('Restarting from file: ', from_hdf5_file)
+
+        f = h5py.File(from_hdf5_file, 'r')
+        index = f['INDEX'].value[0]
+        nwalkers= f['NWALKERS'].value[0]
+
+        if restart_ladder  == True:
+            ladder =  f['BETAS'].value[0]
+            ladder_verbose = "Restarting temperature ladder"
+        if restart_ladder  == False:
+            ladder =  f['BETAS'].value[index]
+            ladder_verbose = "Temperature ladder continued"
+
+        # Take the last chain state
+        init_pop = f['CHAINS'].value[:,:,index,:] 
+        
         f.close()
 
-        # Sort solutions by chi2: from better to worst
-        tupla = zip(log1_chi2,best)
-        tupla_reducida = list(dict(tupla).items())
-        sorted_by_chi2 = sorted(tupla_reducida, key=lambda tup: tup[0])[::-1] 
+        print('Temperature ladder status: ', ladder_verbose)
+        print('Nwalkers: ',nwalkers)
+        print('Ntemps: ', len(ladder))
+        print('Thinning: ', conver_steps)
+        print('Initial population shape: ', init_pop.shape)
 
-        best_file = '{}.best'.format(hdf5_filename.split('.')[0])
-        head = "#Mstar[Msun]      Rstar[Rsun]     Nplanets"
-        writefile(best_file, 'w', head, '%-10s '*3 +'\n')
-        head = "{}             {}           {}\n".format(mstar, rstar, NPLA)
-        writefile(best_file, 'a', head, '%-10s '*3 +'\n')
-
-        head = "#Idx    -Chi2  " + " ".join([
-            "m{0}[Mearth]  Per{0}[d]  k{0}  inc{0}[deg]  h{0}[deg]  M{0}[deg]\
-            Ome{0}[deg] ".format(i+1) for i in range(NPLA)]) + '\n'
-
-        writefile(best_file, 'a', head,  '%-8s '+'%-16s'+' %-11s'*(
-                                                len(head.split())-2) + '\n')
-        for idx, s in enumerate(sorted_by_chi2):
-            texto = str(idx)+ ' ' + str(round(s[0],5))+ ' ' + \
-                        " ".join(str(round(i,5)) for i in s[1]) 
-            writefile(best_file, 'a', texto,  '%-8s '+'%-16s' + \
-                        ' %-11s'*(len(texto.split())-2) + '\n')
-        print('--> Best solutions from the MCMC will be written at: ',best_file)
-
-        return
+        sampler = MCMC.run_mcmc(PSystem,  
+                                Itmax=Itmax, 
+                                conver_steps=conver_steps,
+                                cores=cores,
+                                nwalkers=nwalkers,  
+                                ntemps=None, 
+                                Tmax=None, 
+                                betas=ladder, 
+                                pop0=init_pop, 
+                                suffix=suffix)
+        return sampler
 
 
-
+    @staticmethod
+    def _logp(x, psystem=None):
+        return 0.0

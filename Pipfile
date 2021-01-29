@@ -6,6 +6,14 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+pandas = "*"
+matplotlib = "*"
+scipy = "*"
+h5py = "*"
+ttvfast = "*"
+astropy = "*"
+seaborn = "*"
+sklearn = "*"
 
 [requires]
 python_version = "3.7"
