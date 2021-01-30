@@ -55,9 +55,9 @@ class PlanetarySystem:
                     'transit_times',
                     'sigma_obs',
                     'second_term_logL',
-                    'first_planet_transit',
+                    ##'first_planet_transit',
                     'T0JD',
-                    #'time_span',
+                    ##'time_span',
                     'rstarAU',
                     )
 
@@ -199,8 +199,8 @@ class PlanetarySystem:
                 tmp_periods.append((TT[t+1]-TT[t]))
             estimated_periods.append(min(tmp_periods))
 
-        # Detect which is the first planet in transit (return planetary ID)
-        self.first_planet_transit = min(first_transits, key = lambda t: t[1])[0]
+        ## Detect which is the first planet in transit (return planetary ID)
+        #self.first_planet_transit = min(first_transits, key = lambda t: t[1])[0]
         # Detect the smaller central time of the first planet in transit 
         first_central_time = min(first_transits, key = lambda t: t[1])[1]
         # Estimate the lower possible value for T0JD
@@ -459,10 +459,11 @@ class PlanetarySystem:
                     summary.append("  TTVs: True")
                 else:
                     summary.append("  TTVs: False")
-            summary.append(f"\nTotal time of TTVs data: {self.Ftime} [days]")
-            summary.append(f"First planet (ID) in transit: {self.first_planet_transit}")
-            summary.append(f"Reference epoch of the solutions: {self.T0JD} [JD]")
-            #summary.append(f"Time span of TTVs simulations: {self.time_span}")
-            summary.append(f"Timestep of the simulations: {self.dt} [days]")
+            summary.append("\nSimulation attributes: ")
+            ##summary.append(f"\nFirst planet (ID) in transit: {self.first_planet_transit}")
+            summary.append(f"Reference epoch of the solutions (T0JD): {self.T0JD} [JD]")
+            summary.append(f"Total time of TTVs data (Ftime): {self.Ftime} [days]")
+            ##summary.append(f"Time span of TTVs simulations: {self.time_span}")
+            summary.append(f"Timestep of the simulations (dt): {self.dt} [days]")
 
         return "\n".join(summary)
