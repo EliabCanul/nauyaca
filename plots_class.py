@@ -26,32 +26,10 @@ class Plots_c:
     hdf5_file : str = None
     temperature : int = 0
     burning : float = 0.0  
-    #size : tuple = (10,10)
     sns_context : str = 'notebook'
     sns_style : str = 'darkgrid'
     size : tuple = (10,10)
     colors = colors
-
-    def _check_dimensions(self, fp):
-        # Verify that solution contains ALL the required parameters
-        # to make the simulation. If don't, complete the fields
-        # with the constant parameters. fp must be list.
-        if len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)!=0:
-            # there are the correct number of dimensions, but should be more?
-            print("1")
-            raise ValueError('Invalid values in flat_params. Pass just planetary parameters')
-            
-        elif len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)==0:
-            # dimensions are correct
-            print("2")
-            return fp
-        else:
-            print("3")
-            # insert constant params
-            for k, v in self.PSystem.constant_params.items(): 
-                fp.insert(k, v)
-            return fp
-
 
 
 
@@ -655,4 +633,25 @@ class Plots_c:
         #b, m = model.intercept_, model.coef_
 
         return X, Y, model
+
+
+    def _check_dimensions(self, fp):
+        # Verify that solution contains ALL the required parameters
+        # to make the simulation. If don't, complete the fields
+        # with the constant parameters. fp must be list.
+        if len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)!=0:
+            # there are the correct number of dimensions, but should be more?
+            print("1")
+            raise ValueError('Invalid values in flat_params. Pass just planetary parameters')
+            
+        elif len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)==0:
+            # dimensions are correct
+            print("2")
+            return fp
+        else:
+            print("3")
+            # insert constant params
+            for k, v in self.PSystem.constant_params.items(): 
+                fp.insert(k, v)
+            return fp
 
