@@ -146,8 +146,7 @@ def calculate_epochs(PSystem, flat_params):
 
     # Get 'positions' from signal in TTVFast
     signal_position = run_TTVFast(flat_params,  
-                                mstar=PSystem.mstar, ##NPLA=PSystem.NPLA, 
-                                #init_time=0., final_time=PSystem.time_span, 
+                                mstar=PSystem.mstar, 
                                 init_time=PSystem.T0JD, 
                                 final_time=PSystem.Ftime, 
                                 dt=PSystem.dt)
