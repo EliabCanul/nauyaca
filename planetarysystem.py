@@ -46,7 +46,7 @@ class PlanetarySystem:
                     '_TTVs_original',
                     'NPLA',
                     'constant_params',
-                    'params_names_opt',
+                    ###'params_names_opt',
                     'params_names',
                     'ndim',
                     'hypercube',
@@ -155,7 +155,7 @@ class PlanetarySystem:
         for i in range(1, self.NPLA+1):
             for c in col_names:
                 params_names.append(c+f"{i}")
-        self.params_names_opt = "  ".join(params_names)
+        ###self.params_names_opt = "  ".join(params_names)
 
         for index in sorted(indexes_remove, reverse=True):
             del params_names[index]
@@ -436,8 +436,11 @@ class PlanetarySystem:
         # Add the decoded planets
         new_PS.add_planets(planet_list)
 
-        # Set T0JD (it could be set manually)
-        new_PS.T0JD = json_load['T0JD']
+        # Restart the simulation attributes.
+        # If more attributes exist, include them here!
+        new_PS.simulation(T0JD=json_load['T0JD'],
+                          Ftime=json_load['Ftime'],
+                          dt=json_load['dt'])
 
         return new_PS       
 

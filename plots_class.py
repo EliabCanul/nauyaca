@@ -3,6 +3,7 @@ from sklearn.linear_model import LinearRegression
 from .utils import *
 import matplotlib
 import matplotlib.pyplot as plt
+from collections.abc import Iterable
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import corner 
 import h5py
@@ -14,24 +15,51 @@ from .constants import colors, units_latex, labels
 
 __all__ = ["Plots_c"]
 
+
+# TODO: Include functions to visualize Optimizer results
+
 @dataclass
 class Plots_c:
 
 
     PSystem : None
-    hdf5_file : str = 'None'
+    hdf5_file : str = None
     temperature : int = 0
     burning : float = 0.0  
+    #size : tuple = (10,10)
     sns_context : str = 'notebook'
     sns_style : str = 'darkgrid'
+    size : tuple = (10,10)
+    colors = colors
+
+    def _check_dimensions(self, fp):
+        # Verify that solution contains ALL the required parameters
+        # to make the simulation. If don't, complete the fields
+        # with the constant parameters. fp must be list.
+        if len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)!=0:
+            # there are the correct number of dimensions, but should be more?
+            print("1")
+            raise ValueError('Invalid values in flat_params. Pass just planetary parameters')
+            
+        elif len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)==0:
+            # dimensions are correct
+            print("2")
+            return fp
+        else:
+            print("3")
+            # insert constant params
+            for k, v in self.PSystem.constant_params.items(): 
+                fp.insert(k, v)
+            return fp
+
 
 
 
     def plot_TTVs(self, flat_params=None, mode='None', nsols=1, show_obs=True, residuals=True):
+
         """Plot the observed TTVs signals and the transit solutions from flat_params
         
         Arguments:
-            self {object} -- The Planetary System object.
             flat_params {Array} -- A flat array containing mass, period, eccentricity,
                 inclination, argument, mean anomaly, ascending node for all planets.
                 It could be included more than one solution.
@@ -39,29 +67,64 @@ class Plots_c:
 
         # Be aware of the constant parameters
         mins = 1440.
-        sns.set(context=self.sns_context,style=self.sns_style)
+        sns.set(context=self.sns_context, style=self.sns_style)
         nplots = len(self.PSystem.TTVs) #self.PSystem.NPLA #
 
 
-        # FIXME: There's a bug when the number of simulated transits doesn't 
-        # coincide with the number of observations
-        if nplots > 1:
-            fig, axes = plt.subplots(figsize=(10,10), nrows=nplots, ncols=1, sharex=True)
-        else: 
-            fig, axes = plt.subplots(figsize=(8,10))
+
         
         #sns.despine()
         
-        # =============
-        # Preparacion de datos
-        if (flat_params != None) and (isinstance(flat_params[0], list)):
-            print("E1")
-            pass 
-        elif (flat_params != None) and (isinstance(flat_params[0], list)==False):
-            print("E2")
-            flat_params = [flat_params]
+        # =====================================================================
+        # PREPARING DATA
+        # flat_params have to:
+        #   be a list of lists!
+        #   be in physical values with all the dimensions
 
-        else:
+        try:
+            flat_params = list(flat_params)
+        except:
+            pass
+
+        if flat_params != None:
+            # Is a list or array
+            if isinstance(flat_params[0], float):
+                flat_params = list(flat_params)  # convert to list
+                flat_params = self._check_dimensions(flat_params)
+                flat_params = [flat_params]   # convert to list of list
+
+            # Items are iterables
+            elif isinstance(flat_params[0], Iterable):
+                flat_params = [list(fp) for fp in flat_params ]
+                flat_params = [self._check_dimensions(fp) for fp in flat_params]
+                
+            else: 
+                raise ValueError("Invalid items in flat_params. Items must be planet parameters or list of solutions")
+            """
+            if (flat_params != None) and (isinstance(flat_params[0], list)):
+                # flat_params is a list of lists
+                print("E1")
+                flat_params = []
+                
+                # Verify items are lists
+                fp_tmp = []
+                for fp in flat_params:
+                    if isinstance(fp,list):
+                        fp_tmp.append(self._check_dimensions(self.PSystem, fp))
+                    else:
+                        raise ValueError("Items in flat_params must be lists")
+                flat_params = fp_tmp
+                #pass
+
+            elif (flat_params != None) and (isinstance(flat_params[0], list)==False):
+                # flat_params is a unique list
+                print("E2")
+
+                flat_params = self._check_dimensions(self.PSystem, flat_params)
+                flat_params = [flat_params]
+            """
+        elif self.hdf5_file != None:
+            # Try to build flat_params from hdf5 and the attributes of this function
             print("E3")
             if mode.lower() == 'random':
                 #FIXME: There is a bug when random mode is active:
@@ -115,8 +178,12 @@ class Plots_c:
                     #assert flat_params == 7 * self.PSystem.NPLA, "flat_params items "+\
                     #"must have len = 7 * number of planets."
             """
+        else:
+            # No data to plot. Just the observed TTVs.
+            print('---> No data to plot')
 
-        #===============
+
+        # =====================================================================
         """
         if len(flat_params)>1:
             ndata = 1 #1
@@ -143,153 +210,131 @@ class Plots_c:
             s_m = matplotlib.cm.ScalarMappable(cmap=c_m, norm=norm)
             s_m.set_array([])
         """
+        # BEGINS FIGURE
 
+        # FIXME: There's a bug when the number of simulated transits doesn't 
+        # coincide with the number of observations
+        if nplots > 1:
+            fig, axes = plt.subplots(figsize=self.size, nrows=nplots, ncols=1, sharex=True)
+        else: 
+            fig, axes = plt.subplots(figsize=self.size)
+
+        # X limits
+        l_xlim, r_xlim = self.PSystem.T0JD-1, self.PSystem.Ftime+1
 
         index = 0
-        #alpha_grad = 1./len(flat_params)
-        #print(alpha_grad)
-        for planet_id in self.PSystem.TTVs.keys(): #self.PSystem.planets_IDs.items():
+
+        # Iterates over TTVs of individual Planets
+        for planet_id in self.PSystem.TTVs.keys(): 
 
             if hasattr(self.PSystem.planets[planet_id], "ttvs_data"):
-
                 # Read observed TTVs of current planet
-                ttvs_dict = {k:self.PSystem.TTVs[planet_id][k] for k 
-                                        in sorted(self.PSystem.TTVs[planet_id].keys())}
-                # Tal vez lo anterior se puede cambiar por:
-                # self.TTVs[planet_id]
-                errors = np.array([[v[1]*mins, v[2]*mins] for k,v 
-                                        in ttvs_dict.items()]).T
+                #ttvs_dict = {k:self.PSystem.TTVs[planet_id][k] for k 
+                #                        in sorted(self.PSystem.TTVs[planet_id].keys())}
+                ttvs_dict = self.PSystem.TTVs[planet_id]
+
+                errors = np.array([[v[1]*mins, v[2]*mins] for k,v in ttvs_dict.items()]).T
                 
                 # Make a model O-C given by the transits
-                ttvs_dict = {k:v[0] for k,v in ttvs_dict.items()}                
+                ttvs_dict = {k:v[0] for k,v in ttvs_dict.items()}                                
                 x_obs, y_obs, model_obs = self._calculate_model(ttvs_dict)
-                #residuals_1 = {x:y for x,y in zip(ttvs_dict.keys(), )} #(y_obs-model_obs.predict(x_obs))*mins
-                
-                # 
+
+                # More than one subplot?
                 if nplots > 1:
                     ax = axes[index]
                 else:
                     ax = axes
 
-                # aqui estaba
+                ax.set_ylabel("O-C [min]")
+
+
+                # Plot observed TTVs
                 if show_obs:
-                    # Plot observed TTVs
-                    
                     ax.errorbar(y_obs, 
                                 (y_obs-model_obs.predict(x_obs))*mins, 
                                 yerr=errors, 
-                                color='k', 
-                                ecolor='k',
+                                color=self.colors[index], 
+                                ecolor='gray',
                                 fmt='o', 
                                 markersize=4,
+                                mec='k',
+                                mew=0.5,
                                 alpha=1,
                                 label=f'{planet_id}',
-                                barsabove=True)
-                    sns.scatterplot(x=y_obs, 
-                                    y=(y_obs-model_obs.predict(x_obs))*mins, 
-                                    marker="o", ax=ax, color='white',
-                                    s=3.9,alpha=1. ,zorder=100000)
-                    
-                                  
+                                barsabove=False)
+
+                    #sns.scatterplot(x=y_obs, 
+                    #                y=(y_obs-model_obs.predict(x_obs))*mins, 
+                    #                marker="o", ax=ax, color=self.colors[index], 
+                    #                s=4,alpha=1. ,zorder=100000)
+
+                    ax.set_xlim(l_xlim, r_xlim)
+
+
                 # Make space for residuals
-                #if len(flat_params)>0:
                 if residuals:
                     divider = make_axes_locatable(ax)
                     sub_ax = divider.append_axes("bottom", size="30%", pad=0.1)
+                    sub_ax.axhline(0, alpha=0.3, color='k')
+                    sub_ax.set_xlim(l_xlim, r_xlim)
+                    # Turn off xticklabels in main figure
+                    ax.set_xticklabels([])
 
-                for isol, solution in  enumerate(flat_params):
+                # Iterate over solutions in flat_params
+                if flat_params != None:
 
-                    # Plot the solutions given in flat_params
-                    
-                    ##SP = run_TTVFast(solution, mstar=self.PSystem.mstar, 
-                    ##        NPLA=self.PSystem.NPLA,Tin=0., Ftime= self.PSystem.time_span, 
-                    ##        dt=self.PSystem.dt )
-                    SP = run_TTVFast(solution,  
-                                mstar=self.PSystem.mstar, ##NPLA=PSystem.NPLA, 
-                                #init_time=0., final_time=PSystem.time_span, 
-                                init_time=self.PSystem.T0JD, 
-                                final_time=self.PSystem.Ftime, 
-                                dt=self.PSystem.dt)                    
+                    for isol, solution in enumerate(flat_params):                                       
 
-                    """
-                    EPOCHS = calculate_epochs(SP, self)
-                    """
-                    EPOCHS = calculate_ephemeris(SP, self.PSystem)
-                    
-                    # Make coincide the number of observed and simulated transits
-                    epochs = {epoch[0]:EPOCHS[planet_id][epoch[0]] for epoch in x_obs }
+                        # Perform the simulation for the current solution
+                        SP = run_TTVFast(solution,  
+                                    mstar=self.PSystem.mstar,
+                                    init_time=self.PSystem.T0JD, 
+                                    final_time=self.PSystem.Ftime, 
+                                    dt=self.PSystem.dt)                    
 
-                    # Whitout model
-                    x_cal, y_cal, model_calc = self._calculate_model(epochs)
-                    
-                    ax.plot(y_cal, 
-                            (y_cal-model_calc.predict(x_cal))*mins , 
-                            color= colors[index] , #s_m.to_rgba( logl[isol]), 
-                            lw=1.2, #0.5,
-                            alpha=1,
-                            ) #'-+'
-
-                    
-                    ax.set_ylabel("O-C [min]")
-                    ##ax.set_xlim(self.PSystem.T0JD, self.PSystem.T0JD+self.PSystem.time_span)
-                    ax.set_xlim(self.PSystem.T0JD-1, self.PSystem.Ftime+1)  # Provisional   
-
-                    # =========== Para animacion
-                    ##if index ==0:
-                    ##    ax.set_ylim(-8,9)
-                    ##if index ==1:
-                    ##    ax.set_ylim(-4,4)
-                    # ============
-                    # TODO: Remove thicks in all figures except the last!!
-                    
-                    # Plot residuals
-                    if residuals:
-                        residuals_2 = {x:y for x,y in zip(list(x_cal.flatten()), list(y_cal))} #(y_cal-model_obs.predict(x_cal))*mins
-                        #
-                        residual_obs = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins  for x,y in zip(list(x_obs.flatten()), list(y_obs))}
-                        residual_cal = {x:(y-model_calc.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
-                        #OC_obs = (y_obs-model_obs.predict(x_obs))*mins 
-                        #OC_cal = (y_cal-model_calc.predict(x_cal))*mins
-                        #
-                        ###residuals = [ r1-r2 for r1, r2 in 
-                        ###                zip(residuals_1, residuals_2)]
-                        #residuals = [(ttvs_dict[r]-residuals_2[r])*mins for r in sorted(ttvs_dict.keys()) ]
-                        residuals = [residual_obs[r]-residual_cal[r] for r in sorted(ttvs_dict.keys())]
+                        EPOCHS = calculate_ephemeris(self.PSystem, SP)
                         
-                        sub_ax.scatter(y_obs, residuals, 
-                                        s=2, color=colors[index],
-                                        alpha=1.) #s_m.to_rgba( logl[isol]))
+                        # Make coincide the number of observed and simulated transits
+                        epochs = {epoch[0]:EPOCHS[planet_id][epoch[0]] for epoch in x_obs }
+
+                        # model
+                        x_cal, y_cal, model_calc = self._calculate_model(epochs)
+                        
+                        # Plot O-C
+                        ax.plot(y_cal, 
+                                (y_cal-model_calc.predict(x_cal))*mins , 
+                                color= self.colors[index] ,
+                                lw=1.2, #0.5,
+                                alpha=1,
+                                )
+                        ax.set_xlim(l_xlim, r_xlim)
 
                         
-                        ##sub_ax.set_xlim(self.PSystem.T0JD,self.PSystem.T0JD+self.PSystem.time_span)
-                        sub_ax.set_xlim(self.PSystem.T0JD-1, self.PSystem.Ftime+1)
-                #sub_ax.grid(alpha=0.5)
-                
-                sub_ax.axhline(0, alpha=0.3, color='k')
-                #sub_ax.set_ylim(-3,3)
+                        # Plot residuals
+                        if residuals:
+                            #
+                            residual_obs = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins  for x,y in zip(list(x_obs.flatten()), list(y_obs))}
+                            residual_cal = {x:(y-model_calc.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
+
+                            residuals = [residual_obs[r]-residual_cal[r] for r in sorted(ttvs_dict.keys())]
+                            
+                            sub_ax.scatter(y_obs, residuals, 
+                                            s=2, color=self.colors[index],
+                                            alpha=1.)
+                            sub_ax.set_xlim(l_xlim, r_xlim)
+
 
                 ax.legend(loc='upper right')
-                #ax.grid(alpha=0.5)
                 index += 1
 
             else:
-                print("No ttvs have been provided for planet {}".format(planet_id))
+                print(f"No ttvs have been provided for planet {planet_id}")
 
-        plt.xlabel("Time [days]")
+        plt.xlabel(f"Time [days]")
         plt.tight_layout()
         plt.subplots_adjust(top=0.95)
-
-        #
-        """
-        if len(flat_params)>1:
-            fig.subplots_adjust(right=0.8)
-            cbar_ax = fig.add_axes([0.8, 0.15, 0.05, 0.7])
-            #fig.colorbar(im, cax=cbar_ax)
-            plt.colorbar(s_m, cax=cbar_ax).set_label('Probability')
-        """
-        #
-        
-        return fig
+       
+        return 
 
 
     def plot_hist(self,  chains=None):

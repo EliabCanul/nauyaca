@@ -170,7 +170,7 @@ class Optimizers:
                         for i in range(self.nsols)]
             output = [p.get() for p in results]		
         pool.terminate()
-        print(f'Time elapsed in optimization: {(time.time() - ta)/60 :.3f} minutes')
+        print(f'Elapsed time in optimization: {(time.time() - ta)/60 :.3f} minutes')
 
         # Sort results by chi2
         res = self.sort_results(output)
@@ -196,5 +196,5 @@ class Optimizers:
         
         self.results_by_param = dict(zip(self.PSystem.params_names.split(), self.results['physical'].T))
         self.results_by_param['chi2'] = self.results['chi2']
-
+        
         return self.results_by_param

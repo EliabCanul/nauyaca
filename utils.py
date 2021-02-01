@@ -107,7 +107,7 @@ def run_TTVFast(flat_params, mstar=None, init_time=0., final_time=None, dt=None)
     return SP
 
 
-def calculate_ephemeris(SP, PSystem):
+def calculate_ephemeris(PSystem, SP):
 
     """ SP: signal position array from TTVFast
         Signal Positions list contains:
@@ -153,7 +153,7 @@ def calculate_epochs(PSystem, flat_params):
                                 dt=PSystem.dt)
 
     # Compute simulated ephemerids (epochs: transits)
-    epochs = calculate_ephemeris(signal_position, PSystem)
+    epochs = calculate_ephemeris(PSystem, signal_position)
     
     return epochs
 
