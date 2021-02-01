@@ -104,9 +104,7 @@ class PlanetarySystem:
             self.planets_IDs[new_planet.planet_id] = self.NPLA
 
             # Check for ttvs in planet object and append to TTVs dictionary
-            if type(new_planet.ttvs_data) == dict: #hasattr(new_planet, "ttvs_data"): 
-                #! self.TTVs[new_planet.planet_id] = copy.deepcopy(new_planet.ttvs_data)
-                #self.TTVs[new_planet.planet_id] = new_planet.ttvs_data.copy()
+            if type(new_planet.ttvs_data) == dict: 
                 self._TTVs_original[new_planet.planet_id] = new_planet.ttvs_data.copy()
             
             self.NPLA += 1
