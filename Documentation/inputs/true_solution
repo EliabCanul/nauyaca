@@ -1,2 +1,9 @@
-ID,mstar,rstar,mass1,period1,ecc1,inclination1,argument1,mean_anomaly1,ascending_node1,mass2,period2,ecc2,inclination2,argument2,mean_anomaly2,ascending_node2,time,megno,ejection,ntran
-52,0.9132504374984772,0.8632504374984772,5.66468,5.35468,0.1237,90.7169039033241,-63.78,16.39,88.36,26.85598,11.83319,0.0727,90.05186862225226,-172.74,86.62,88.95,14663.99,2.0,False,130-59
+ID,mstar,rstar,
+52,0.9132504374984772,0.8632504374984772
+
+mass1,period1,ecc1,inclination1,argument1,mean_anomaly1,ascending_node1
+5.66468,5.35468,0.1237,90.7169039033241,-63.78,16.39,88.36
+
+
+mass2,period2,ecc2,inclination2,argument2,mean_anomaly2,ascending_node2
+26.85598,11.83319,0.0727,90.05186862225226,-172.74,86.62,88.95
