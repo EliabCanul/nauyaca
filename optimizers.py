@@ -18,8 +18,6 @@ __doc__ = "Optimizers"
 __all__ = ["Optimizers"]
 
 
-
-
 # ------------------------ O P T I M I Z E R ------------------------------
 
 #f = lambda x: x-360 if x>360 else (360+x if x<0 else x)
@@ -196,5 +194,5 @@ class Optimizers:
         
         self.results_by_param = dict(zip(self.PSystem.params_names.split(), self.results['physical'].T))
         self.results_by_param['chi2'] = self.results['chi2']
-        
+
         return self.results_by_param
