@@ -1,0 +1,43 @@
+
+# Python 3.7 is required. Also, -pipenv- is requiered to manage the dependencies.
+# If you do not have pipenv, install via: pip install pipenv or pip3 install pipenv
+
+
+
+#######
+Installation
+
+# Go to your /home directory
+
+cd /home
+
+# clone the repository
+
+git clone https://github.com/EliabCanul/nauyaca.git
+
+# Change to nauyaca directory
+
+cd nauyaca
+
+# Install the dependencies
+
+pipenv install
+
+# Initialize the virtual environment by typing
+
+pipenv shell
+
+#######
+Running the examples
+
+# Enter to Documentation directory
+
+cd Directory
+
+# Open the notebooks by typing
+
+jupyter notebook
+
+# Try runnin the examples in the documentation
+
+
