@@ -340,7 +340,7 @@ def _remove_constants(PSystem, x):
 # ADITIONAL FUNCTIONS TO MAKE LIFE EASIER
 
 def init_walkers(PSystem, distribution=None, opt_data=None, ntemps=None, 
-                    nwalkers=None,  threshold=1.0):
+                    nwalkers=None,  fbest=1.0):
     """An useful function to easily create initial walkers.
     
     Keyword Arguments:
@@ -349,9 +349,9 @@ def init_walkers(PSystem, distribution=None, opt_data=None, ntemps=None,
             options are selected (default: None)
         ntemps {int} -- Number of temperatures (default: None)
         nwalkers {int} -- number of walkers (default: None)
-        threshold {float} -- A value between 0 and 1 to select the fraction of 
+        fbest {float} -- A value between 0 and 1 to select the fraction of 
             solutions from opt_data to take into account.
-            For example: threshold=0.3 takes the best 30% of solutions from 
+            For example: fbest=0.3 takes the best 30% of solutions from 
             opt_dat (default: 1.0)
     
     Returns:
@@ -366,14 +366,14 @@ def init_walkers(PSystem, distribution=None, opt_data=None, ntemps=None,
         return _func_uniform(PSystem, ntemps=ntemps, nwalkers=nwalkers)
 
     if opt_data is not None:
-        assert(0.0 < threshold <= 1.0), "threshold must be between 0 and 1!"
+        assert(0.0 < fbest <= 1.0), "fbest must be between 0 and 1!"
 
         if distribution.lower() in ("gaussian", "picked", "ladder"): 
             
             print("\n--> Selected distribution: {}".format(distribution))   
             
             return _func_from_opt(PSystem, distribution, ntemps=ntemps, nwalkers=nwalkers,
-                        opt_data=opt_data, threshold=threshold)
+                        opt_data=opt_data, fbest=fbest)
 
         else:
             text = ("--> Argument -distribution- does not match with any",
@@ -405,7 +405,7 @@ def _func_uniform(PSystem, ntemps=None, nwalkers=None):
 
 
 def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None, 
-            opt_data=None, threshold=1.0):
+            opt_data=None, fbest=1.0):
 
     # Dictionary from optimizers
     if type(opt_data) == dict:
@@ -413,14 +413,17 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
         fun = opt_data['chi2']
         opt_data = np.column_stack((fun, x))
 
-    # Clean and sort results. Get just data inside threshold.
+    # TODO: It is necessary to give the input in 'cube' format?
+    assert((opt_data[:,1:]>0.).all() and (opt_data[:,1:] < 1.0).all()), "Invalid opt_data. Provide 'cube' solutions"
+
+    # Clean and sort results. Get just data inside fbest.
     # FIXME: There is a bug when opt_data is given from file. It must be
     # converted to list: np.genfromtxt('syn52.opt').tolist()
     [opt_data.remove(res) for res in opt_data if res[0]>=1e+50]
     opt_data = sorted(opt_data, key=lambda x: x[0])
     original_len = len(opt_data)
 
-    cut = int(len(opt_data)*threshold) # index of maximum chi2
+    cut = int(len(opt_data)*fbest) # index of maximum chi2
     opt_data = opt_data[:cut]
 
     POP0 = []
@@ -517,7 +520,7 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
 
 """
 def _func_ladder(PSystem, distribution, ntemps=None, nwalkers=None,
-                    opt_data=None, threshold=None):
+                    opt_data=None, fbest=None):
     print("\n--> Selected distribution: {}".format(distribution))      
     
 
@@ -531,7 +534,7 @@ def _func_ladder(PSystem, distribution, ntemps=None, nwalkers=None,
     opt_data = sorted(opt_data, key=lambda x: x[0])
     original_len = len(opt_data)
 
-    cut = int(len(acomodar)*threshold) # index of maximum chi2
+    cut = int(len(acomodar)*fbest) # index of maximum chi2
     opt_data = opt_data[:cut]
 
     f = lambda x: x[1:]
@@ -619,6 +622,7 @@ def mcmc_summary(PSystem, hdf5_file, burning=0.0, fthinning=1, verbose=True):
         1.0 is the lower error
         1.3 is the upper error
     """
+    # TODO: This method should be at MCMC?
 
     assert(0.0 <= burning <= 1.0), f"burning must be between 0 and 1!"
     assert( isinstance(fthinning, int) ), "fthinning should be int"
@@ -639,7 +643,7 @@ def mcmc_summary(PSystem, hdf5_file, burning=0.0, fthinning=1, verbose=True):
     ni = f["ITMAX"].value[0]
     cs = f["CONVER_STEPS"].value[0]
     
-    maxc2 = f["BESTCHI2"].value[:index+1]
+    maxc2 = f["BESTLOGL"].value[:index+1]
     bs = f["BESTSOLS"].value[:index+1]
 
     ref_epoch = f["REF_EPOCH"].value[0]
@@ -738,7 +742,7 @@ def extract_best_solutions(hdf5_filename, write_file=True):
     NPLA = f['NPLA'][()][0]
     index = f['INDEX'][()][0]
     best= f['BESTSOLS'][()]
-    log1_chi2 = f['BESTCHI2'][()] 
+    log1_chi2 = f['BESTLOGL'][()] 
     names = f['COL_NAMES'][()]
     f.close()
 
