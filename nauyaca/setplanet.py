@@ -1,0 +1,176 @@
+from dataclasses import dataclass
+#import numpy as np
+import sys
+import collections
+
+from .constants import col_names, units, physical_bounds
+
+__doc__ = "setplanet data"
+
+__all__ = ["SetPlanet"]
+
+# TODO: col_names and units should be at __init__?? It is also in planetarysystem and utils
+
+#col_names = ["mass", "period", "ecc", "inclination", "argument", "mean_anomaly",
+#             "ascending_node"]
+#units = ["[M_earth]", "[d]", "", "[deg]", "[deg]", "[deg]", "[deg]"]
+
+
+# TODO: In the future, check for compatibility between dataclasses and slots
+# in order to avoid boiler plate code
+
+#@dataclass
+class SetPlanet:
+    """Defines a new Planet object.
+    Each Planet has many properties as: 
+    - planet_id (requiered)
+    - boundaries for: mass, period, ...,
+    - ttvs_data given as dictionary 
+    """
+    
+    # All instances of the class
+    __slots__ = ('planet_id', 
+                'mass', 
+                'period', 
+                'ecc', 
+                'inclination', 
+                'argument', 
+                'mean_anomaly', 
+                'ascending_node', 
+                '_boundaries_parameterized',
+                'ttvs_data')
+
+
+    def __init__(self,
+            planet_id,
+            # Default boundaries are specified by physical_bounds
+            mass  = physical_bounds["mass"],
+            period  = physical_bounds["period"],
+            ecc  = physical_bounds["ecc"] ,
+            inclination = physical_bounds["inclination"],
+            argument  = physical_bounds["argument"],
+            mean_anomaly  = physical_bounds["mean_anomaly"] ,
+            ascending_node  = physical_bounds["ascending_node"],
+            _boundaries_parameterized = None,
+            ttvs_data = None):
+        
+        self.planet_id = planet_id
+        self.mass = mass
+        self.period = period
+        self.ecc = ecc
+        self.inclination = inclination
+        self.argument = argument
+        self.mean_anomaly = mean_anomaly
+        self.ascending_node = ascending_node
+        self._boundaries_parameterized = _boundaries_parameterized
+        self.ttvs_data = ttvs_data
+
+    @property
+    def boundaries(self):
+
+        Boundaries = collections.namedtuple('Boundaries', col_names) 
+
+        # Physical boundaries
+        #self.boundaries = [ 
+        bounds = Boundaries(
+            mass = self._cut_boundaries("mass", self.mass),
+            period = self._cut_boundaries("period", self.period),
+            ecc = self._cut_boundaries("ecc", self.ecc),
+            inclination = self._cut_boundaries("inclination", self.inclination),
+            argument = self._cut_boundaries("argument", self.argument),
+            mean_anomaly = self._cut_boundaries("mean_anomaly", self.mean_anomaly),
+            ascending_node = self._cut_boundaries("ascending_node", self.ascending_node)
+            )
+
+        # Parameterized boundaries. Substitute argument (w) and mean anomaly (M)
+        # for parameterized angles x=w+M and y=w-M
+        # _boundaries_parameterized follows the same order as in col_names
+        self._boundaries_parameterized = (
+            bounds[0],
+            bounds[1],
+            bounds[2],
+            bounds[3],
+            (min(bounds[4])+min(bounds[5]), max(bounds[4])+max(bounds[5])),
+            (min(bounds[4])-max(bounds[5]), max(bounds[4])-min(bounds[5])),
+            bounds[6]
+            )
+        
+        return bounds
+
+    # TODO: make a reset_boundaries function
+
+    
+    def load_ttvs(self, ttvs_file, comment="#", delimiter=None):
+        """Add TTVs data to the planet        
+        Arguments:
+            ttvs_file {str} -- An ascci file containing transit number,
+                transit time and lower and upper errors.
+                For example:
+                0 transit_time0 lower_error_0 upper_error_0
+                1 transit_time1 lower_error_1 upper_error_1
+                ...
+            comment {str} -- lines starting with this character will be skiped
+            delimiter {str} -- string character used to splitting lines
+        """
+
+        ttvs_data = {}
+
+        f = open(f"{ttvs_file}",'r').read().splitlines()
+        
+        lines = [line for line in f if line]
+        for line in lines:
+            
+            if line.startswith(f"{comment}"):
+                pass
+            else:
+                l = line.split(delimiter)
+                ttvs_data[int(l[0])] = [float(l[1]), float(l[2]), float(l[3]) ]   
+
+        # Verify entry data are correct
+        for ep, times in ttvs_data.items():
+
+            if 0 in [times[1], times[2]]:
+                self.ttvs_data = None
+                exit_status = "Invalid error values in epoch " + str(ep)+ \
+                " found in file: " + str(ttvs_file)
+                sys.exit(exit_status)
+                
+        self.ttvs_data = ttvs_data
+
+        return
+
+
+    def _cut_boundaries(self, param_str, param):
+        """
+        Stablish physical boundaries to each planetary parameter.
+        Notify wheter a physical cut is made
+        """
+
+        assert param[0]<=param[1], f"{param_str}:{param} lower bound is " \
+        "greater than upper. Boundaries must be: lower <= upper"
+
+        phy_bds = physical_bounds[param_str]
+
+        lower = max(phy_bds[0], param[0])
+        upper = min(phy_bds[1], param[1])
+
+        # TODO: This should be in .mass, .ecc, ...
+        if param[0] < phy_bds[0]:
+            print(f"--> Parameter -{param_str}- of planet -{self.planet_id}- set to lower physical limit: {phy_bds[0]}")
+        if param[1] > phy_bds[1]:
+            print(f"--> Parameter -{param_str}- of planet -{self.planet_id}- set to upper physical limit: {phy_bds[1]}")
+
+        return (lower,  upper)
+
+
+    def __str__(self):
+        print("\n =========== Planet Summary =========== ")
+        summary = [f"Planet : {self.planet_id}"]
+        summary.append("  Boundaries:")
+        for i, v in enumerate(self.boundaries):
+            summary.append("\n".join([f"    {col_names[i]}: {v}  {units[i]}" ] ) )
+        if type(self.ttvs_data) == dict: #hasattr(self, "ttvs_data"):
+            summary.append("  TTVs: True")
+        else:
+            summary.append("  TTVs: False")
+        return "\n".join(summary)
