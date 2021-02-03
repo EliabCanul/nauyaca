@@ -23,12 +23,18 @@ cd nauyaca
 
 pipenv install
 
+#######
+Add to your current shell the path to nauyaca
+
+export PYTHONPATH
+
+#######
+Running the examples
+
 # Initialize the virtual environment by typing
 
 pipenv shell
 
-#######
-Running the examples
 
 # Enter to Documentation directory
 
