@@ -46,7 +46,7 @@ class PlanetarySystem:
                     '_TTVs_original',
                     'NPLA',
                     'constant_params',
-                    ###'params_names_opt',
+                    'params_names_all',
                     'params_names',
                     'ndim',
                     'hypercube',
@@ -153,7 +153,7 @@ class PlanetarySystem:
         for i in range(1, self.NPLA+1):
             for c in col_names:
                 params_names.append(c+f"{i}")
-        ###self.params_names_opt = "  ".join(params_names)
+        self.params_names_all = "  ".join(params_names)
 
         for index in sorted(indexes_remove, reverse=True):
             del params_names[index]
