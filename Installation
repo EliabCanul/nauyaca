@@ -23,15 +23,24 @@ cd nauyaca
 
 pipenv install
 
-#######
-Add to your current shell the path to nauyaca
+# Close the terminal
+exit
 
-export PYTHONPATH
+#######
+In the directory of your current shell (for example .bashrc), add the path to nauyaca
+
+export PYTHONPATH:/home/{mypc}/nauyaca
+
+# substitute {mypc} for your pc name
+
+# source your shell file
+
+source .bashrc
 
 #######
 Running the examples
 
-# Initialize the virtual environment by typing
+# In the nauyaca's main directory, initialize the virtual environment by typing
 
 pipenv shell
 
@@ -44,6 +53,6 @@ cd Documentation
 
 jupyter notebook
 
-# Try runnin the examples in the documentation
+# Try running the examples in the documentation
 
 
