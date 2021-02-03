@@ -315,7 +315,7 @@ class Plots_c:
         return 
 
 
-    def plot_hist(self,  chains=None):
+    def plot_hist(self,  chains=None, titles=False):
         # TODO: Include a burning line for chains!!!!
         """Make histograms of the every planetary parameter
         
@@ -349,7 +349,7 @@ class Plots_c:
         chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
         ##
 
-        # Figura
+        # Figure
         sns.set(context=self.sns_context,style=self.sns_style)
         _, axes = plt.subplots(nrows=self.PSystem.NPLA, ncols=7, 
                                 figsize=(16,3*self.PSystem.NPLA))
@@ -388,13 +388,16 @@ class Plots_c:
                         tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,2),
                                                         round(up-med,2),
                                                         round(med-low,2))
-                    axes[n, p].set_title(tit)
+                    if titles:
+                        axes[n, p].set_title(tit)
+                    
                     axes[n, p].set_yticks([])
                     dim += 1
                 
                 # Write in title the constant values
                 else:
-                    axes[n, p].set_title("{}".format(self.PSystem.constant_params[param_idx]))
+                    if titles:
+                        axes[n, p].set_title("{}".format(self.PSystem.constant_params[param_idx]))
                     axes[n, p].set_yticks([])
                     dim += 1
                 
@@ -464,7 +467,7 @@ class Plots_c:
         return
 
 
-    def plot_corner(self, chains=None, color='#0880DE'):
+    def plot_corner(self, chains=None, color='#0880DE',titles=False):
         """[summary]
         
         Arguments:
@@ -544,7 +547,7 @@ class Plots_c:
                 font_scale=0.5,rc={"lines.linewidth": 0.5})
 
         corner.corner(df, quantiles=[0.16, 0.5, 0.84], 
-                    show_titles=True, 
+                    show_titles=titles, 
                     title_kwargs={"fontsize": 12}, 
                     title_fmt='.3f',
                     label_kwargs={"fontsize": 12, "labelpad": 20},
@@ -600,12 +603,13 @@ class Plots_c:
         axes[0,1].plot(acc[:index+1,0], color='k', lw=3)
         axes[0,1].set_ylabel("Accepted temperature swap fractions")
 
-        # Chi2
-        axes[1,0].plot(meanlogl[:index+1])
-        axes[1,0].plot(bestlogl[:index+1])
+        # Loglikelihood
+        axes[1,0].plot(meanlogl[:index+1], label='Mean Loglikelihood')
+        axes[1,0].plot(bestlogl[:index+1], label='Maximum Loglikelihood')
         axes[1,0].set_ylabel("Log likelihood")
         axes[1,0].set_yscale("symlog")
         axes[1,0].set_xlabel(f"Steps/{conv}")
+        axes[1,0].legend(loc='lower right')
 
         # Tau
         axes[1,1].plot(tau[:index+1])
