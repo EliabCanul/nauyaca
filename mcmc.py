@@ -27,14 +27,14 @@ class MCMC:
     PSystem : None
     nwalkers : int = None
     ntemps : int = None
-    Itmax : int = 100 # run_time ??
+    itmax : int = 100 # run_time ??
     conver_steps : int = 1
     opt_data : list = None
-    threshold : float = 1.0
+    fbest : float = 1.0
     distribution : str = ''
     p0 : list = None 
     cores : int = 1
-    Tmax : float = None
+    tmax : float = None
     betas : list = None
     file_name : str = None
     path : str = './'
@@ -63,7 +63,7 @@ class MCMC:
         elif self.opt_data is not None:
             self.p0 = init_walkers(self.PSystem, distribution=self.distribution,
                                     opt_data=self.opt_data, ntemps=self.ntemps,
-                                    nwalkers=self.nwalkers,threshold=self.threshold)
+                                    nwalkers=self.nwalkers,fbest=self.fbest)
         else:
             sys.exit("Invalid arguments for initial population ")
         
@@ -115,7 +115,7 @@ class MCMC:
                                 adaptation_lag = t0,
                                 adaptation_time=nu,
                                 a=a_scale, 
-                                Tmax=self.Tmax,
+                                Tmax=self.tmax,
                                 pool=pool,
                                 loglargs=(self.PSystem,), 
                                 logpkwargs={'psystem':self.PSystem}
@@ -128,7 +128,7 @@ class MCMC:
             # thin: The number of iterations to perform between saving the 
             # state to the internal chain.
             for iteration, s in enumerate(
-                                sampler.sample(p0=self.p0, iterations=self.Itmax, 
+                                sampler.sample(p0=self.p0, iterations=self.itmax, 
                                 thin=self.conver_steps, storechain=True, 
                                 adapt=True, swap_ratios=False)):
 
@@ -206,7 +206,7 @@ class MCMC:
                     print(' Elapsed time: ', round((time.time() - ti)/60.,4),'min')  
 
                 index += 1              
-                if (index+1)*self.conver_steps > self.Itmax:
+                if (index+1)*self.conver_steps > self.itmax:
                     print('\n--> Maximum number of iterations reached in MCMC')
                     break				
 
@@ -226,7 +226,7 @@ class MCMC:
 
     def _set_hdf5(self, PSystem, hdf5_filename):
 
-        nsteps = -(-self.Itmax // self.conver_steps)
+        nsteps = -(-self.itmax // self.conver_steps)
         self.nsteps = nsteps
 
         with h5py.File(hdf5_filename, 'w') as newfile:
@@ -270,7 +270,7 @@ class MCMC:
             NCD('NTEMPS', (1,), dtype='i8')[:] = self.ntemps
             NCD('NWALKERS', (1,), dtype='i8')[:] = self.nwalkers
             NCD('CORES', (1,), dtype='i8')[:] = self.cores
-            NCD('ITMAX', (1,), dtype='i8')[:] = self.Itmax
+            NCD('ITMAX', (1,), dtype='i8')[:] = self.itmax
             NCD('CONVER_STEPS', (1,), dtype='i8')[:] = self.conver_steps
             NCD('REF_EPOCH', (1,), dtype='i8')[:] = PSystem.T0JD
 
@@ -313,8 +313,8 @@ class MCMC:
 
 
     @classmethod
-    def restart_mcmc(cls, PSystem, from_hdf5_file='', Itmax=100, conver_steps=2, cores=1, 
-        suffix='_rerun', restart_ladder=False): #  ntemps=None, Tmax=None,
+    def restart_mcmc(cls, PSystem, from_hdf5_file='', itmax=100, conver_steps=2, cores=1, 
+        suffix='_rerun', restart_ladder=False): #  ntemps=None, tmax=None,
         
         assert suffix != '', "New HDF5 file name cannot coincide with previous\
              run. Try changing -suffix- name."
@@ -347,12 +347,12 @@ class MCMC:
         print('Initial population shape: ', init_pop.shape)
 
         new_mcmc = MCMC(PSystem,  
-                                Itmax=Itmax, 
+                                itmax=itmax, 
                                 conver_steps=conver_steps,
                                 cores=cores,
                                 nwalkers=nwalkers,  
                                 ntemps=None, 
-                                Tmax=None, 
+                                tmax=None, 
                                 betas=ladder, 
                                 p0=init_pop, 
                                 suffix=suffix)
