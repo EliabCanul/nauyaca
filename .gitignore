@@ -1,3 +1,4 @@
 *.png
 *.hdf5
 *.env
+*checkpoints
