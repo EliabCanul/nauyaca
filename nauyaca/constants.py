@@ -1,5 +1,7 @@
 
 
+__doc__ = "A file for defining constants used in Nauyaca"
+
 # var_names
 col_names = (
 			"mass", 
@@ -25,6 +27,8 @@ physical_bounds = {
     'mean_anomaly': (0.0, 360),  # deg 
     'ascending_node': (0.0, 360.0)  # deg 
     }
+
+Mearth_to_Msun = 3.0034893488507934e-06
 
 Msun_to_Mearth = 332946.07832806994
 

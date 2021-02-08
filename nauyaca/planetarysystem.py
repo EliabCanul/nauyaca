@@ -6,30 +6,24 @@ import pickle
 import json
 import copy
 
-__doc__ = "PS"
+
+__doc__ = "A module to create Planetary System objects over which simulations will be performed"
 
 __all__ = ["PlanetarySystem"]
-
-#! col_names = ["mass", "period", "ecc", "inclination", "argument", "mean_anomaly",
-#             "ascending_node"]
-
-#! units = ["[M_earth]", "[d]", "", "[deg]", "[deg]", "[deg]", "[deg]"]
 
 
 # TODO: In the future, check for compatibility between dataclasses and slots
 # in order to avoid boiler plate code
-
 #@dataclass
 class PlanetarySystem:  
-    """A Planetary System object is created when the stellar properties are set.
-    Then planets are added and authomatically the number of planets increases. 
-    If planets have ttvs data, then these data are added to the TTVs dictionary.
+    """A Planetary System object formed by star and planets
+    
+    A Planetary System object is created when the stellar properties are set.
+
     Inputs:
     Name of the planetary system
     Stellar mass [Msun]
     Stellar radius [Rsun]
-    Time interval to take from the TTVs data [days]. By "default" it takes the entire
-     time of the TTVs.
     """
 
     # All instances of the class
@@ -55,35 +49,41 @@ class PlanetarySystem:
                     'transit_times',
                     'sigma_obs',
                     'second_term_logL',
-                    ##'first_planet_transit',
                     'T0JD',
-                    ##'time_span',
                     'rstarAU',
                     )
 
-    def __init__(self, system_name,mstar,rstar):#,Ftime='default',dt=None):
+    def __init__(self, system_name,mstar,rstar):
+        """
+        Parameters
+        ----------
+        system_name : str
+            The Planetary System name
+        mstar : float
+            Stellar mass [Msun]
+        rstar : float
+            Stellar radius [Rsun]
+        """        
+
         self.system_name = system_name
         self.mstar = mstar
         self.rstar = rstar
-        #self.NPLA = 0
-        #self.Ftime = 'Default'
-        #self.dt = None
 
 
-    """
-    # Dataclass format. Unused still dataclass supports slots
-    system_name : str           
-    mstar : float                
-    rstar : float               
-    Ftime : float = "Default" 
-    dt : float = 0.1   
-    """
     def add_planets(self, new_planets):
+        """A function to add Planets to the Planetary System
+
+        Parameters
+        ----------
+        new_planets : list
+            A list with Planet objects that will be part of the system.
+            Recommendable: Add Planet objects in order of closeness to the star
+        """
 
         self.planets = {}
         self.bounds = []
         self._bounds_parameterized = []
-        self.planets_IDs = {}
+        self.planets_IDs = {}  # OrderedDict?
         self._TTVs_original = {} 
         self.NPLA = 0 
 
@@ -104,7 +104,7 @@ class PlanetarySystem:
             self.planets_IDs[new_planet.planet_id] = self.NPLA
 
             # Check for ttvs in planet object and append to TTVs dictionary
-            if type(new_planet.ttvs_data) == dict: 
+            if hasattr(new_planet, "ttvs_data") and type(new_planet.ttvs_data) == dict: 
                 self._TTVs_original[new_planet.planet_id] = new_planet.ttvs_data.copy()
             
             self.NPLA += 1
@@ -115,6 +115,8 @@ class PlanetarySystem:
 
 
     def _set_mandatory_attr_(self):
+        """A help function to manage attributes of the system
+        """
         
         assert len(self._TTVs_original) > 0, "No Transit times have been provided for any "\
             "planet. Use .load_ttvs() method to load an ASCII file or use the "\
@@ -132,6 +134,9 @@ class PlanetarySystem:
 
 
     def _manage_boundaries(self):
+        """A function to adapt Planet boundaries to Planetary System boundaries
+        """
+
         # Identify constant parameters and save them
         # TODO: change constant_params from dict with numbers as keys for parameter strings?
         self.constant_params = OrderedDict() #{}
@@ -166,8 +171,24 @@ class PlanetarySystem:
         return
 
 
-    #def _simulation_attributes_(self):
-    def simulation(self, T0JD=None, Ftime='Default', dt=None):
+    def simulation(self, T0JD=None, Ftime=None, dt=None):
+        """A function to set the simulation features
+
+        Parameters
+        ----------
+        T0JD : float, optional
+            Time of reference for the simulation results (days), 
+            by default None, in which case, T0JD is calculated by rounding 
+            down the smallest transit time in Planet ephemeris.
+        Ftime : float, optional
+            The final time of the simulations (days), by default None, 
+            in which case, Ftime is calculated by rounding up the maximum 
+            transit time in the Planet ephemeris.
+        dt : float, optional
+            The timestep of the simulations (days), by default None, 
+            in which case, dt is calculated as the estimated internal 
+            planet period divided over 30.
+        """
 
         # Make available rstar in AU         
         self.rstarAU = self.rstar*Rsun_to_AU 
@@ -197,8 +218,6 @@ class PlanetarySystem:
                 tmp_periods.append((TT[t+1]-TT[t]))
             estimated_periods.append(min(tmp_periods))
 
-        ## Detect which is the first planet in transit (return planetary ID)
-        #self.first_planet_transit = min(first_transits, key = lambda t: t[1])[0]
         # Detect the smaller central time of the first planet in transit 
         first_central_time = min(first_transits, key = lambda t: t[1])[1]
         # Estimate the lower possible value for T0JD
@@ -215,18 +234,14 @@ class PlanetarySystem:
             raise ValueError("Invalid timestep -dt-")
         
         # Detect which is the time of the first transit and round it down.
-        # --->>> T0JD will be the reference epoch of the solutions <<<---
-        if self.system_name.startswith('syn'):
-            # FIXME: Parche hecho para que T0JD sea 0 para los sintéticos y min para
-            # los sistemas reales            
-            self.T0JD = 0.0
-
-        elif isinstance(T0JD, (int, float)):
+        #if self.system_name.startswith('syn'):
+        #    # FIXME: Parche hecho para que T0JD sea 0 para los sintéticos y min para
+        #    # los sistemas reales            
+        #    self.T0JD = 0.
+        if isinstance(T0JD, (int, float)):
             self.T0JD = T0JD
-
         else:
             self.T0JD =  ( min(first_transits, key = lambda t: t[1])[1] ) // 1
-
 
         # Detect if the proposed reference time is valid
         if min_t0 < self.T0JD < first_central_time:
@@ -237,11 +252,9 @@ class PlanetarySystem:
                 f"time: {first_central_time}, but greater than {min_t0} to " +\
                 "avoid spurious results")
 
-        ## Time span to make the simulations (DO NOT SET IT MANUALLY!)
-        ##self.time_span = 1.005*(self.Ftime - self.T0JD )#+ 0.1*(self.T0JD)
 
         # Set Ftime: total time of TTVs simulations [days]
-        if str(Ftime).lower() == 'default':
+        if Ftime == None: #str(Ftime).lower() == 'default':
             # Takes the maximum central time in TTVs and round it up to the next integer
             self.Ftime = np.ceil(max([ list(self.TTVs[i].values())[-1][0] for i in \
                         self.TTVs.keys() ]) )
@@ -257,7 +270,6 @@ class PlanetarySystem:
 
 
         # Discard TTVs outside the specified Ftime
-        # TODO: se puede usar .copy()?
         TTVs_copy = copy.deepcopy(self.TTVs)
         [[TTVs_copy[j].pop(i) for i in list(self.TTVs[j].keys()) \
             if self.TTVs[j][i][0]>self.Ftime] for j in list(self.TTVs.keys()) ]
@@ -281,16 +293,15 @@ class PlanetarySystem:
         for planet_id, d_errs in self.sigma_obs.items():
             arg_log = 2*np.pi* np.array(list(d_errs.values()))**2
             self.second_term_logL[planet_id] = np.sum( 0.5*np.log(arg_log) )
-            #arg_log = np.log(1./(np.sqrt(2*np.pi)*np.array(list(d_errs.values())) ))
-            #self.second_term_logL[planet_id] = sum(arg_log)
-            #
-            #arg_log = 2*np.sqrt(2.)* np.array(list(d_errs.values()))
-            #self.second_term_logL[planet_id] = np.sum( np.log(1./arg_log) )
+
 
         return
 
 
     def _check_mass_limits(self, Planet):
+        """A help function to check for upper limits in mass. Maximum planet
+        mass must be, at most, 1% (k_limit) of the stellar mass.
+        """
         
         #! upper_mass_limit = Planet.boundaries[0][1]
         upper_mass_limit = Planet.mass[1]    
@@ -299,9 +310,6 @@ class PlanetarySystem:
         k_mass_frac = (k_limit * self.mstar) * Msun_to_Mearth
 
         if upper_mass_limit > k_mass_frac:
-            #! new_limit = (k_limit * ms) * Msun_to_Mearth
-            #! Planet.boundaries[0][1] = new_limit
-            #! Planet.boundaries = Planet.boundaries._replace(mass = (Planet.mass[0],new_limit) )
             Planet.mass = (Planet.mass[0], k_mass_frac)  # Update mass limits
             Planet.boundaries  # Update planet boundaries
             print(f'--> Upper mass boundary for planet -{Planet.planet_id}- has been'+
@@ -314,7 +322,8 @@ class PlanetarySystem:
     # ========== Saving ==========
     @property
     def save_pickle(self):
-        """ Save the planetary system object using pickle"""
+        """Save the Planetary System object using pickle"""
+
         pickle_file = f'{self.system_name}.pkl'
         with open(pickle_file, 'wb') as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
@@ -323,23 +332,21 @@ class PlanetarySystem:
         return
 
 
-    #@property
-    #def save(self):  # save_pickle?
-    #    # Save pickle file with Planetary System object
-    #    self._save_pickle()
-    #    return 
-
-
     @staticmethod
     def load_pickle(pickle_file):
-        """[summary]
-        
-        Arguments:
-            pickle_file {str} -- File name of planetary system object
-        
-        Returns:
-            obj -- returns a planetary system object
+        """A function to rebuild the Planetary System from pickle
+
+        Parameters
+        ----------
+        pickle_file : str
+            The file name of the .pkl file
+
+        Returns
+        -------
+        Planetary System
+            Returns the Planetary System rebuilded
         """
+
         with open(f'{pickle_file}', 'rb') as input:
             pickle_object = pickle.load(input)
         
@@ -348,6 +355,7 @@ class PlanetarySystem:
 
     @property
     def save_json(self):
+        """Save the Planetary System object using json"""
         
         # Serialize planet objects
         dct_planet_obj = {}
@@ -384,16 +392,21 @@ class PlanetarySystem:
         return
 
 
-    #@property
-    #def save_json(self):
-    #    self._encoder_json()
-    #    return
-
-
     @classmethod
     def load_json(cls, json_file):
-        """ Create a Planetary System instance from json.
+        """A function to rebuild the Planetary System from json
+
+        Parameters
+        ----------
+        json_file : str
+            The file name of the .json file
+
+        Returns
+        -------
+        Planetary System
+            Returns the Planetary System rebuilded
         """
+
         try:
             from .setplanet import SetPlanet
         except:
@@ -444,6 +457,14 @@ class PlanetarySystem:
 
         
     def __str__(self):
+        """Prints a summary of the Planetary System object
+
+        Returns
+        -------
+        str
+            A summary of the Planetary System object
+        """
+
         print("\n =========== Planetary System Summary =========== ")
         summary = [f"\nSystem: {self.system_name}"]
         summary.append(f"Mstar: {self.mstar} Msun |  Rstar: {self.rstar} Rsun")
@@ -452,11 +473,12 @@ class PlanetarySystem:
             summary.append(f"Number of planets: {self.NPLA}")
             summary.append(f"Planet information:")
             for k, v in self.planets.items():
-                summary.append("------"+"\n"+f"Planet: {k}")
+                number = self.planets_IDs[v.planet_id] + 1
+                summary.append("------"+"\n"+f"Planet{number}: {k}")
                 summary.append("  Boundaries:")
                 summary.append("\n".join([f"    {col_names[i]}: {str(bo)}  {units[i]}" 
                                         for i,bo in enumerate(v.boundaries)] ))
-                if type(self.planets[k].ttvs_data) == dict: #hasattr(self.planets[k], "ttvs_data"):
+                if hasattr(self.planets[k], "ttvs_data") and type(self.planets[k].ttvs_data) == dict:
                     summary.append("  TTVs: True")
                 else:
                     summary.append("  TTVs: False")

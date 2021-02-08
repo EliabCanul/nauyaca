@@ -25,10 +25,10 @@ class Plots_c:
     PSystem : None
     hdf5_file : str = None
     temperature : int = 0
-    burning : float = 0.0  
+    burnin : float = 0.0  
     sns_context : str = 'notebook'
     sns_style : str = 'darkgrid'
-    size : tuple = (10,10)
+    size : tuple = (10,10)  # Size debe ser kwarg de cada plot con predefinidos
     colors = colors
 
 
@@ -112,8 +112,8 @@ class Plots_c:
 
                 r = get_mcmc_results(self.hdf5_file, keywords=['INDEX','CHAINS'])
                 index = int(r['INDEX'][0])
-                burning_ = int(self.burning*(index+1))
-                chains  = r['CHAINS'][0,:,burning_:index+1,:]
+                burnin_ = int(self.burnin*(index+1))
+                chains  = r['CHAINS'][0,:,burnin_:index+1,:]
                 wk, it, _ = chains.shape 
                 del r 
 
@@ -129,6 +129,7 @@ class Plots_c:
 
             elif mode.lower() == 'best':
                 print('best')
+                # best_solutions comes from better to worse
                 best_solutions = extract_best_solutions(self.hdf5_file, 
                                                         write_file=False)
                 
@@ -316,22 +317,23 @@ class Plots_c:
 
 
     def plot_hist(self,  chains=None, titles=False):
-        # TODO: Include a burning line for chains!!!!
+        # TODO: Include a burnin line for chains!!!!
+        # TODO TODO TODO TODO !!!
         """Make histograms of the every planetary parameter
         
         Arguments:
             chains {array} -- An array with shape (nwalkers, niters, nparams)
         """
         
-        assert(0.0 <= self.burning <= 1.0), f"burning must be between 0 and 1!"
+        assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
         if chains is not None:
             assert(len(chains.shape) == 3), "Shape for chains should be: (walkers,steps,dim)"+\
                 f" instead of {chains.shape}"
             nwalkers,  it, _ = chains.shape
-            burning_ = int(self.burning*(it) )
-            chains  = chains[:,burning_:,:]   
+            burnin_ = int(self.burnin*(it) )
+            chains  = chains[:,burnin_:,:]   
 
-        if self.hdf5_file:
+        elif self.hdf5_file:
             assert(isinstance(self.hdf5_file, str) ), "self.hdf5_file must be a string"
             # Extract chains from hdf5 file
             f = h5py.File(self.hdf5_file, 'r')
@@ -340,9 +342,12 @@ class Plots_c:
             nwalkers = f['NWALKERS'][0]
             f.close()
 
-            burning = int(self.burning*index)
-            #last_it = int(converge_time / conver_steps)
-            chains = chains[:,burning:index+1,:]
+            burnin = int(self.burnin*index)
+            #last_it = int(converge_time / intra_steps)
+            chains = chains[:,burnin:index+1,:]
+        
+        else:
+            raise RuntimeError("No chains or hdf5 file specified")
 
         ##
         # Convert from  normalized to physical
@@ -416,7 +421,7 @@ class Plots_c:
             plot_means {bool} -- If True, then plot the mean of the chains at each
                         iteration for all the dimensions (default: {True})
         """
-        xlabel = 'Iteration / conver_steps '
+        xlabel = 'Iteration / intra_steps '
         if chains is not None:
             index = chains[::int(thin),:,:].shape[1] # The length of the chain
 
@@ -429,11 +434,11 @@ class Plots_c:
             chains = f['CHAINS'].value[self.temperature,::int(thin),:index+1,:]
             total_walkers = chains.shape[0]
 
-            conver_steps = f['CONVER_STEPS'].value[0]
+            intra_steps = f['INTRA_STEPS'].value[0]
             f.close()
 
 
-            xlabel = f'Iteration / {conver_steps} '
+            xlabel = f'Iteration / {intra_steps} '
             ##
             chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(total_walkers) ])
             ##
@@ -474,14 +479,12 @@ class Plots_c:
             h5name {[type]} -- [description]
         
         Keyword Arguments:
-            burning {float} -- A number between 0 and 1 that represents the
-                initial fraction of burning of the total of iterations, e.g., 
-                burning = 0.2, removes the initial 20% of the chains.
+            burnin {float} -- A number between 0 and 1 that represents the
+                initial fraction of burnin of the total of iterations, e.g., 
+                burnin = 0.2, removes the initial 20% of the chains.
         """
 
-        assert(0.0 <= self.burning <= 1.0), f"burning must be between 0 and 1!"
-
-        ###fisicos = np.array([[cube_to_physical(syn, x) for x in RESULTS_mcmc[0,nw,:,:]] for nw in range(Nwalkers) ])
+        assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
 
         ##ndim = len(self.bounds) #npla*7
         #colnames = self.params_names.split()
@@ -489,29 +492,29 @@ class Plots_c:
         if self.hdf5_file:
             f = h5py.File(self.hdf5_file, 'r')
             index = f['INDEX'].value[0]
-            conver_steps = f['CONVER_STEPS'].value[0]
+            intra_steps = f['INTRA_STEPS'].value[0]
             converge_time = f['ITER_LAST'].value[0]
             chains = f['CHAINS'].value[:,:,:index+1,:]
             nwalkers= f['NWALKERS'].value[0]
             #names_params = f["COL_NAMES"]
             f.close()
 
-            burning = int(self.burning*index)
-            last_it = int(converge_time / conver_steps)
-            #print(burning, last_it)
-            chains = chains[0,:,burning:last_it,:]
+            burnin = int(self.burnin*index)
+            last_it = int(converge_time / intra_steps)
+            
+            chains = chains[0,:,burnin:last_it,:]
             ##
             chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
             ##
             
 
-        # PARECE QUE AQUI FALTA CONSIDERAR index PARA HACER EL BURNING SOBRE chains
+        # FIXME PARECE QUE AQUI FALTA CONSIDERAR index PARA HACER EL BURNIN SOBRE chains
         nwalkers = chains.shape[0]
         steps = chains.shape[1]
         # nuevo
         chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
         #
-        chains_2D = chains.reshape(nwalkers*steps,self.PSystem.ndim)  #self.ndim CAMBIAR A len(BOUNDS)?
+        chains_2D = chains.reshape(nwalkers*steps,self.PSystem.ndim) 
 
         """
         # Rename the columns of the data frame
@@ -569,9 +572,6 @@ class Plots_c:
         wspace=0.015,
         hspace=0.015)
         
-        #plt.savefig('{}_corner.pdf'.format(h5name.split('.')[0]) )
-        #plt.close()
-        #plt.show()
         
         return
 
@@ -586,7 +586,7 @@ class Plots_c:
         acc = f['ACC_FRAC0'].value
         meanlogl = f['MEANLOGL'].value
         tau = f['AUTOCORR'].value
-        conv = f['CONVER_STEPS'].value[0]
+        conv = f['INTRA_STEPS'].value[0]
         index = f['INDEX'].value[0]
         f.close()
 
@@ -621,6 +621,90 @@ class Plots_c:
         plt.subplots_adjust(wspace=0.15, hspace=0.05)
 
         return
+
+
+
+    def plot_convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1):
+
+        assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
+
+        if chains is not None:
+            assert(len(chains.shape)==3), "Shape for chains should be:"+\
+                f" (walkers,steps,dim) instead of {chains.shape}"
+            if names is not None:
+                pass
+            else:
+                # Create a generic list of names
+                names = [f"dim{d}" for d in list(range(chains.shape[-1]))] 
+
+        elif self.hdf5_file:
+            f = h5py.File(self.hdf5_file, 'r')
+            chains = f['CHAINS'].value[0,:,:,:]
+            names = list(f['COL_NAMES'].value[:].split())
+            f.close()
+
+        else:
+            raise RuntimeError("No chains or hdf5 file specified")
+        
+        print("-- ", chains.shape)
+
+        
+        _, axes = plt.subplots(nrows=2, ncols=1, figsize=(20,10))
+        symbols = {1:"o",2:"^",3:"x",4:"s",5:"P"}
+        
+
+        # Gelman Rubin test
+        GR = gelman_rubin(chains=chains, nchunks_gr=nchunks_gr, thinning=thinning, names=names)
+
+        # Select the steps to perform GR statistic 
+        steps = [ int(it) for it in np.linspace(0,chains.shape[1],nchunks_gr+1)[:-1] ]
+
+        i=0
+        m=1
+        for k, v in GR.items():
+            if i==10:
+                m+=1
+                i=0
+            axes[0].plot(steps, v, marker=symbols[m], alpha=0.5, label=k)
+            i+=1
+
+        axes[0].set_title(f"{self.PSystem.system_name}", fontsize=15)
+        axes[0].axhline( 1.01, color='gray', alpha=0.8, ls="--")
+        axes[0].axhline( 1, color='k', alpha = 0.5, ls='--')
+        axes[0].set_xlabel("Start iteration", fontsize=15)
+        axes[0].set_ylabel(r'$\hat{R}$', fontsize=15)
+        axes[0].legend(loc='upper left', fontsize=8) #bbox_to_anchor=(1.04,1), loc="bottom left")
+        axes[0].grid(alpha=0.1)    
+            
+        # Geweke test
+        Z = geweke(chains=chains, names=names, burnin=self.burnin)
+        
+        i=0
+        m=1
+        for k, v in Z.items():
+            if i==10:
+                m+=1
+                i=0
+            axes[1].plot(v, marker=symbols[m], alpha=0.5, label=k) 
+            i+=1
+
+        axes[1].axhline(-1, color='gray', alpha=0.5, ls="--")
+        axes[1].axhline( 1, color='gray', alpha=0.5, ls="--")
+        axes[1].axhline( 0, color='k', alpha = 0.8, ls='--')
+        axes[1].axhline(-2, color='gray', alpha=0.7, ls="--")
+        axes[1].axhline( 2, color='gray', alpha=0.7, ls="--")
+        axes[1].set_xlabel("Second 50% of the samples (20 chunks)", fontsize=15)
+        axes[1].set_ylabel("Z-score", fontsize=15)
+        axes[1].grid(alpha=0.1)    
+        
+        
+        plt.subplots_adjust(hspace=0.2)
+        
+        return {"GR": GR, "Z": Z}
+
+
+
+
 
 
     @staticmethod

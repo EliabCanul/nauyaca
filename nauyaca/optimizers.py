@@ -1,6 +1,6 @@
 import time 
 import datetime
-import numpy as np  # Se puede sustituir np.random.seed()?
+import numpy as np
 import sys
 from dataclasses import dataclass
 from multiprocessing import Pool
@@ -13,22 +13,27 @@ from scipy.optimize import minimize
 warnings.filterwarnings("ignore")
 
 
-__doc__ = "Optimizers"
+__doc__ = "A module to run minimization algorithms"
 
 __all__ = ["Optimizers"]
 
 
-# ------------------------ O P T I M I Z E R ------------------------------
-
-#f = lambda x: x-360 if x>360 else (360+x if x<0 else x)
-
 @dataclass
 class Optimizers:
+    """Simulations based on a sequence of minimization algorithms
 
-    """Fit the TTVs running sequentially the algorithms:
-    * Differential evolution 
-    * Powell
-    * Nelder Mead
+    Parameters
+    ----------
+    PSystem : 
+        The Planetary System object
+    nsols : int, optional
+        The number of solutions to reach, by default 1
+    cores : int, optional
+        The number of cores to run in parallel, by default 1
+    path : str, optional
+        The directory path to save outputs, by default './'
+    suffix : str, optional
+        A suffix for the output file name, by default ''
     """
 
     PSystem : None
@@ -39,9 +44,27 @@ class Optimizers:
 
     @staticmethod
     def _differential_evolution_nelder_mead(PSystem, base_name, indi=0):
+        """Base function to run the sequence of minimization algorithms
+
+        Parameters
+        ----------
+        PSystem : Planetary System
+            The Planetary System object to simulate
+        base_name : tuple
+            A tuple with the output file names for the 'cube' and 'phys' results
+        indi : int, optional
+            An ID that refers to number of solution, by default 0
+
+        Returns
+        -------
+        list
+            A list containing: [fun, X_cube, X_phys], where:
+            fun: chi square of the solution
+            X_cube : Solution in normalized bounds
+            X_phys : Solution in physical values
+        """                
         
         base_name_cube, base_name_phys = base_name
-        ##hypercube = [[0.,1.] for _ in range(len(PSystem.bounds)) ] # hypercube
         
         """ 
                         -----Differential Evolution----- 
@@ -85,16 +108,13 @@ class Optimizers:
         print(f" {indi+1} | DE: {f0 :.3f}  PW: {f1 :.3f}  NM: {f2 :.3f}")
 
         # Reconstruct flat_params adding the constant values
-        x2_cube = x2.tolist() #list(x2)  
-        #for k, v in PSystem.constant_params.items(): 
-        #    x2_cube.insert(k, v)
+        x2_cube = x2.tolist() 
 
         # Write results in output file
         info = '{} \t {} \n'.format(str(f2), "  ".join([str(it ) for it in x2_cube]))
         
         writefile( base_name_cube, 'a', info, '%-30s'
                         +' %-11s'*(len(info.split())-1) + '\n')
-
 
         #---------------- 
         # Convert from cube to physical values and remove constants
@@ -103,32 +123,25 @@ class Optimizers:
         x2_phys = _remove_constants(PSystem, x2_phys).tolist()
 
         # Write results in output file
-        #info = '{} \t {} \n'.format(str(f2), "  ".join([str(it ) for it in x2_phys]))
         info = ' ' + str(f2) + ' ' + "  ".join([str(it ) for it in x2_phys]) 
         writefile( base_name_phys, 'a', info, '%-30s'
                         +' %-11s'*(len(info.split())-1) + '\n')
 
-        #---------------- 
-        # Return cube and physical results
-        #return [f2] + list(x2_cube)
+
         return [f2 , x2_cube, x2_phys]
 
 
     #@classmethod
     def run(self):
-        """[summary]
-        
-        Arguments:
-            PSystem {[type]} -- [description]
-        
-        Keyword Arguments:
-            nsols {int} -- Number of solutions to be performed (default: 1)
-            cores {int} -- Number of cores to run in parallel (default: 1)
-            suffix {str} -- Suffix of the outpu file. (default: '')
-        
-        Returns:
-            array -- An array with the chi**2 and the planetary solutions for 
-            each planet. Also an ascci file is saved with the same information.
+        """Call this function to run the optimizers
+
+        Returns
+        -------
+        dict
+            A dictionary with the optimization results. Keys are:
+            'chi2' : The corresponding chi square of the solutions
+            'cube' : The solutions normalized between 0 and 1
+            'physical' : The solutions in physical values
         """
 
         ta = time.time()
@@ -185,12 +198,32 @@ class Optimizers:
 
     @staticmethod
     def sort_results(X):
+        """A function to order the solutions according to chi2
+
+        Parameters
+        ----------
+        X : list
+            A list containing lists of the solutions, where the first item of
+            individual lists is the corresponding chi square
+
+        Returns
+        -------
+        list
+            Returns a list of lists with chi square in increasing order
+        """
         return sorted(X, key=lambda x:x[0])
 
     
     @property
     def results_dict(self):
-        """Return physical results sorted by chi2 and for individual planet parameters"""
+        """A function to separate the solutions by individual planet parameters
+
+        Returns
+        -------
+        dict
+            Returns physical results sorted by chi2 and for individual planet 
+            parameters
+        """
         
         self.results_by_param = dict(zip(self.PSystem.params_names.split(), self.results['physical'].T))
         self.results_by_param['chi2'] = self.results['chi2']

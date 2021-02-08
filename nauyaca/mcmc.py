@@ -1,41 +1,92 @@
 import time 
 import datetime
 import numpy as np
-import sys
 from dataclasses import dataclass
 from multiprocessing import Pool
 from .utils import * # Miztli: from NAU.utils import *
 from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants # Miztli: from NAU.utils import writefile, intervals
-
 import h5py
 import ptemcee as pt
 from contextlib import closing
 
-__doc__ = "MCMC"
+
+__doc__ = "A module to perform MCMC runs using the Parallel-tempering algorithm"
 
 __all__ = ["MCMC"]
 
 
-
-# ------------- M A R K O V  C H A I N  M O N T E - C A R L O -------------
-
 @dataclass
 class MCMC:
+    """Perform an MCMC run using Parallel-Tempering algorithm
 
-    """Perform an MCMC using Parallel-Tempering"""
+    Parameters
+    ----------
+    PSystem : 
+        The Planetary System object
+    p0 : array, optional
+        Initial population of walkers. Shape must be (ntemps, nwalkers, ndim),
+        by default None, in which case ntemps, nwalkers, opt_data, fbest  and 
+        distribution must be specified. If p0 is given, then ignore ntemps, 
+        nwalkers, opt_data, fbest and distribution parameters.
+    ntemps : int, optional
+        Number of temperatures for the parallel-tempering MCMC. If p0 is not
+        None, ntemps is taken from p0 shape[0].
+    nwalkers : int, optional
+        Number of walkers per temperature. If p0 is not None, nwalkers is taken
+        from p0 shape[1].
+    opt_data : dict or array, optional
+        Results from the optimizers that will be used to create p0.
+        -If dict, it have to be the dictionary comming from the optimizers with 
+        keys 'chi2', 'cube', 'physical'.
+        -If array, it have to be an array created from the file '*_cube.opt',
+        for example, using numpy.genfromtxt().
+    fbest : float, optional
+        A fraction between 0 and 1 to especify the fraction of best solutions
+        from opt_data (if given) to create p0, by default 1.
+    distribution : str, optional
+        A distribution name to create p0 if ntemps, nwalkers, opt_data and 
+        fbest are given. The current supported distributions are: 'uniform', 
+        'gaussian', 'picked', 'ladder'. See utils.init_walkers for details
+        about these distributions.
+    itmax : int
+        Number of maximum iterations performed in the MCMC, by default 100.
+    intra_steps : int
+        Number of internal steps for saving the state of the chains, by
+        default 1.
+    tmax : float, optional
+        Maximum temperature value in the temperature ladder. By default it is
+        calculated from ptemcee.
+    betas : list
+        A list of inverse temperatures for the temperature ladder. By default,
+        it is calculated from ptemcee.
+    cores : int
+        Number of cores to run in parallel, by default 1.
+    file_name : str
+        The file name of the output .hdf5 file where the main features of the
+        MCMC run are saved. By default the file_name corresponds to the name
+        of the Planetary System.
+    path : str
+        A directory path to save the output file, by default './'.
+    suffix : str
+        A suffix for the output file name, by default ''.
+    verbose : bool
+        A flag to print a summary of the current status of the run at each 
+        output especified by intra_steps, by default True.
+    """
+
 
     PSystem : None
-    nwalkers : int = None
+    p0 : list = None 
     ntemps : int = None
-    itmax : int = 100 # run_time ??
-    conver_steps : int = 1
+    nwalkers : int = None
     opt_data : list = None
     fbest : float = 1.0
     distribution : str = ''
-    p0 : list = None 
-    cores : int = 1
+    itmax : int = 100 # run_time ??
+    intra_steps : int = 1
     tmax : float = None
     betas : list = None
+    cores : int = 1
     file_name : str = None
     path : str = './'
     suffix : str = ''
@@ -47,62 +98,74 @@ class MCMC:
         Run the parallel-tempering algorithm
         """
 
-        # temperatures from betas
-        if self.betas is not None:
-            self.ntemps = len(self.betas)
+        # PREPARE FOR RUNNING
 
-
-        if self.nwalkers < 2*self.PSystem.ndim:
-            sys.exit(f"Number of walkers must be >= 2*ndim, i.e., \
-                nwalkers >= {2 * self.PSystem.ndim}.\n Stopped simulation!")
-        
-        # ==== Initial walkers population
+        # Define initial walkers population
         if self.p0 is not None:
-            self.p0 = self.p0
+            pass
 
-        elif self.opt_data is not None:
-            self.p0 = init_walkers(self.PSystem, distribution=self.distribution,
+        elif type(None) not in ( type(self.opt_data), type(self.ntemps), 
+                                        type(self.nwalkers), type(self.fbest)):
+            self.p0 = init_walkers(self.PSystem,distribution=self.distribution,
                                     opt_data=self.opt_data, ntemps=self.ntemps,
                                     nwalkers=self.nwalkers,fbest=self.fbest)
         else:
-            sys.exit("Invalid arguments for initial population ")
+            raise NameError("No 'p0' have been encountered. Provide 'p0' or " +
+                            "define: 'opt_data', 'fbest', 'ntemps', " +
+                            "'nwalkers', and 'distribution' to initialize " +
+                            "walkers from optimizers.")
         
-        # Update ndim and nwalkers
-        self.ntemps, self.nwalkers, _ = self.p0.shape
+        # Update ndim and nwalkers from p0 above
+        self.ntemps, self.nwalkers, ndim_tmp = self.p0.shape
 
+        # Check for consistency in input parameters
+        if self.nwalkers < 2 * self.PSystem.ndim:
+            raise RuntimeError(f"Number of walkers must be >= 2*ndim, i.e., " +
+                f"nwalkers have to be >= {2 * self.PSystem.ndim}.")
 
-        # Prepare running
-        ti = time.time()
-        now = datetime.datetime.now()
-
-        print("\n =========== PARALLEL-TEMPERING MCMC ===========\n")
-        print("--> Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
-        print("--> Reference epoch of the solutions: ", self.PSystem.T0JD, " [JD]")
-
-        """ 
-                Create and set the hdf5 file for saving the output.
-        """
+        if ndim_tmp != self.PSystem.ndim:
+            raise RuntimeError(f"Number of dimensions in 'PSystem' " +
+            f"({self.PSystem.ndim}) differs from that in 'p0' ({ndim_tmp}).")
         
+        # temperatures from betas
+        if self.betas is not None:
+            if len(self.betas) == self.ntemps:
+                pass
+            else:
+                raise RuntimeError(f"Number of 'betas' ({self.betas}) differs"+
+                f" from number of temperatures in 'p0' ({self.ntemps})")
+
         # hdf5 file name to save mcmc data
         if self.file_name is not None:
             self.hdf5_filename =  f"{self.path}{self.file_name}{self.suffix}.hdf5"   
         else:
             self.hdf5_filename = f"{self.path}{self.PSystem.system_name}{self.suffix}.hdf5"
-        
-        print('--> Results will be saved at: ', self.hdf5_filename, '\n')
-        
+
+
+        # Time it
+        ti = time.time()
+        now = datetime.datetime.now()
+        print("\n =========== PARALLEL-TEMPERING MCMC ===========\n")
+        print("--> Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
+        print("--> Reference epoch of the solutions: ", self.PSystem.T0JD, " [JD]")
+        print('--> Results will be saved at: ', self.hdf5_filename)
+        print("--> MCMC parameters:")
+        print(f"      -ntemps: {self.ntemps}")
+        print(f"      -nwalkers: {self.nwalkers}")
+        print(f"      -itmax: {self.itmax}")
+        print(f"      -intra_steps: {self.intra_steps}")
+        print()
+
         # Create an h5py file
         self._set_hdf5( self.PSystem, self.hdf5_filename)
-
-        """
-                Run the MCMC using parallel-tempering algorithm
-        """
+        
         # Default values in ptemcee, 
         # Do not change it at least you have read Vousden et al. (2016):
         nu = 100. #/nwalkers 
         t0 = 10000. #/nwalkers
         a_scale = 10
 
+        # RUN
         with closing(Pool(processes=self.cores)) as pool:
 
             sampler = pt.Sampler(
@@ -129,10 +192,10 @@ class MCMC:
             # state to the internal chain.
             for iteration, s in enumerate(
                                 sampler.sample(p0=self.p0, iterations=self.itmax, 
-                                thin=self.conver_steps, storechain=True, 
+                                thin=self.intra_steps, storechain=True, 
                                 adapt=True, swap_ratios=False)):
 
-                if (iteration+1) % self.conver_steps :
+                if (iteration+1) % self.intra_steps :
                     continue
 
                 max_value, max_index = max((x, (i, j))
@@ -174,13 +237,8 @@ class MCMC:
                     print(" Current mean likelihood dispersion: ", round(std_meanlogl, 6))
                     autocorr[index] = mean_tau
 
-                """
-                                Save data in hdf5 File
-                """
-                # Add the constant parameters to save the best solutions in the
-                # current iteration. It is not applicable to chains in the mcmc
-                #for k, v in sorted(PSystem.constant_params.items(), key=lambda j:j[0]):
-                #    xbest = np.insert(xbest, k, v)
+                
+                # Save data in hdf5 File
                     
                 # shape for chains is: (temps,walkers,steps,dim)
                 # It's worth saving temperatures others than 0???
@@ -206,14 +264,13 @@ class MCMC:
                     print(' Elapsed time: ', round((time.time() - ti)/60.,4),'min')  
 
                 index += 1              
-                if (index+1)*self.conver_steps > self.itmax:
+                if (index+1)*self.intra_steps > self.itmax:
                     print('\n--> Maximum number of iterations reached in MCMC')
                     break				
 
-        """
-        Extract best solutions from hdf5 file and write it in ascci
-        """
-        extract_best_solutions(self.hdf5_filename)
+        
+        # Extract best solutions from hdf5 file and write it in ascci
+        extract_best_solutions(self.hdf5_filename, write_file=True)
 
         print("--> Reference epoch of the solutions: ", self.PSystem.T0JD, " [JD]")
         print('--> Iterations performed: ', iteration +1)
@@ -225,8 +282,17 @@ class MCMC:
 
 
     def _set_hdf5(self, PSystem, hdf5_filename):
+        """Generates an hdf5 file and set fields
 
-        nsteps = -(-self.itmax // self.conver_steps)
+        Parameters
+        ----------
+        PSystem : 
+            The Planetary System object
+        hdf5_filename : str
+            The name of the .hdf file
+        """
+
+        nsteps = -(-self.itmax // self.intra_steps)
         self.nsteps = nsteps
 
         with h5py.File(hdf5_filename, 'w') as newfile:
@@ -271,7 +337,7 @@ class MCMC:
             NCD('NWALKERS', (1,), dtype='i8')[:] = self.nwalkers
             NCD('CORES', (1,), dtype='i8')[:] = self.cores
             NCD('ITMAX', (1,), dtype='i8')[:] = self.itmax
-            NCD('CONVER_STEPS', (1,), dtype='i8')[:] = self.conver_steps
+            NCD('INTRA_STEPS', (1,), dtype='i8')[:] = self.intra_steps
             NCD('REF_EPOCH', (1,), dtype='i8')[:] = PSystem.T0JD
 
             # COL_NAMES are the identifiers of each dimension
@@ -289,8 +355,8 @@ class MCMC:
     @staticmethod
     def _save_mcmc(hdf5_filename, current_sampler_chain, xbest, sampler_betas, autocorr, 
                    index, max_value, swap, max_index, iteration, meanlogl):
+        """A help function to save the current state of the MCMC run"""
         
-        #print(' Saving...')
         ta = time.time()  # Monitor the time wasted in saving..
         with h5py.File(hdf5_filename, 'r+') as file:
             # shape for chains is: (temps,walkers,steps,dim)
@@ -313,20 +379,70 @@ class MCMC:
 
 
     @classmethod
-    def restart_mcmc(cls, PSystem, from_hdf5_file='', itmax=100, conver_steps=2, cores=1, 
-        suffix='_rerun', restart_ladder=False): #  ntemps=None, tmax=None,
-        
-        assert suffix != '', "New HDF5 file name cannot coincide with previous\
-             run. Try changing -suffix- name."
-        
-        #TODO: new hdf5 file must coincide with hdf5_file + suffix
-        
-        print("\n=========== RESTARTING MCMC ===========\n")
-        print('Restarting from file: ', from_hdf5_file)
+    def restart_mcmc(cls, PSystem, hdf5_file, in_path='./', out_path='./', 
+        itmax=100, intra_steps=2, cores=1, suffix='_2', restart_ladder=False):
+        """A function to restart a MCMC simulation from previous hdf5 file.
 
-        f = h5py.File(from_hdf5_file, 'r')
+        Parameters
+        ----------
+        PSystem : 
+            The Planetary System object.
+        hdf5_file : str
+            The name of a hdf5 file to restart the MCMC run. If this file is
+            in a different directory than the working directory, provide the
+            route through 'in_path'. By default, the new file will be saved 
+            at the same directory, at least you specify other in 'out_path'.
+            For consistency, the output file name will be equal to hdf5_file
+            plus suffix.
+        in_path : str, optional
+            The path where the input file is, by default './'.
+        out_path
+            The path where the output file will be saved, by default './'.
+        itmax : int, optional
+            Number of maximum iterations performed in the MCMC, by default 100.
+        intra_steps : int, optional
+            Number of internal steps for saving the state of the chains, by
+            default 2.
+        cores : int, optional
+            Number of cores to run in parallel, by default 1.
+        suffix : str, optional
+            A suffix for the output file name, by default '_2'.
+        restart_ladder : bool, optional
+            A flag to restart the temperature ladder (True) or keep the last
+            state of the ladder of previous run (False), by default False.
+
+        Returns
+        -------
+        dict
+            The sampler object in dictionary
+        """
+        from os import path
+
+        # Verify output directory exists
+        if path.exists(f'{out_path}'):
+            if out_path.endswith('/'):
+                pass
+            else:
+                out_path += '/'
+        else:
+            raise RuntimeError(f"directory {out_path} does not exists")
+
+        # Verify entry data are correct
+        if hdf5_file != '':
+            if in_path.endswith('/'):
+                file_in = in_path + hdf5_file
+            else:
+                file_in = in_path + '/' + hdf5_file
+        else:
+            raise RuntimeError("To restart, provide 'PSystem' and 'hdf5_file'")
+
+        assert suffix != '', ("New HDF5 file name cannot coincide with previous"+
+            " run. Try changing 'suffix' name.")
+
+
+        # Read previous run
+        f = h5py.File(file_in, 'r')
         index = f['INDEX'].value[0]
-        nwalkers= f['NWALKERS'].value[0]
 
         if restart_ladder  == True:
             ladder =  f['BETAS'].value[0]
@@ -340,21 +456,21 @@ class MCMC:
         
         f.close()
 
-        print('Temperature ladder status: ', ladder_verbose)
-        print('Nwalkers: ',nwalkers)
-        print('Ntemps: ', len(ladder))
-        print('Thinning: ', conver_steps)
-        print('Initial population shape: ', init_pop.shape)
+        out_file = hdf5_file.split('.')[-2]
+
+        print("\n =========== RESTARTING MCMC ===========\n")
+        print('--> Restarting from file: ', file_in)
+        print('--> Temperature ladder status: ', ladder_verbose)
+        print()
 
         new_mcmc = MCMC(PSystem,  
                                 itmax=itmax, 
-                                conver_steps=conver_steps,
+                                intra_steps=intra_steps,
                                 cores=cores,
-                                nwalkers=nwalkers,  
-                                ntemps=None, 
-                                tmax=None, 
                                 betas=ladder, 
                                 p0=init_pop, 
+                                file_name=out_file,
+                                path =out_path,
                                 suffix=suffix)
         
         sampler = new_mcmc.run()
@@ -362,8 +478,8 @@ class MCMC:
         return sampler
 
 
-
     @staticmethod
     def _logp(x, psystem=None):
+        """The log prior function"""
 
         return 0.0
