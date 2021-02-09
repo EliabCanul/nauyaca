@@ -13148,51 +13148,10 @@ div#notebook {
 <div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">nauyaca_local</span> <span class="k">as</span> <span class="nn">nau</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">nauyaca</span> <span class="k">as</span> <span class="nn">nau</span>
 </pre></div>
 
     </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>We inspect the available modules inside nauyaca:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">nau</span><span class="o">.</span><span class="n">__all__</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt output_prompt">Out[2]:</div>
-
-
-
-
-<div class="output_text output_subarea output_execute_result">
-<pre>[&#39;SetPlanet&#39;, &#39;PlanetarySystem&#39;, &#39;Optimizers&#39;, &#39;MCMC&#39;, &#39;Plots_c&#39;]</pre>
-</div>
-
-</div>
-
 </div>
 </div>
 
@@ -13207,14 +13166,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>First, let's define the Planet objects and their attributes. These planets will be part of the planetary system that we want to analyze. We create a Planet just by giving a planet name. Let's assume that the first planet in our system is named simply "Planet-b". Then, we create it as follows:</p>
+<p>First, let's define the Planet objects and their attributes. These planets will be part of the planetary system that we want to analyze. We create a Planet just by giving a planet name. Let's assume that the <strong>first</strong> planet in our system is named simply "Planet-b". Then, we create it as follows:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">SetPlanet</span><span class="p">(</span><span class="s2">&quot;Planet-b&quot;</span><span class="p">)</span>
@@ -13251,12 +13210,12 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[27]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">ttvs_data</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.941979</span><span class="p">,</span> <span class="mf">0.000144</span><span class="p">,</span> <span class="mf">0.000144</span><span class="p">],</span>
                      <span class="mi">1</span><span class="p">:</span> <span class="p">[</span><span class="mf">7.296786</span><span class="p">,</span> <span class="mf">0.000283</span><span class="p">,</span> <span class="mf">0.000283</span><span class="p">],</span>
-                     <span class="mi">2</span><span class="p">:</span> <span class="p">[</span><span class="mf">12.654408</span><span class="p">,</span><span class="mf">0.000314</span><span class="p">,</span> <span class="mf">0.000314</span><span class="p">]</span>
+                     <span class="mi">2</span><span class="p">:</span> <span class="p">[</span><span class="mf">12.654408</span><span class="p">,</span><span class="mf">0.000314</span><span class="p">,</span> <span class="mf">0.000314</span><span class="p">],</span>
                      <span class="c1">#... more data</span>
                     <span class="p">}</span>
 </pre></div>
@@ -13285,7 +13244,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[28]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">!</span> head -8  ./inputs/planetb_ttvs.dat
@@ -13324,7 +13283,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>Note:</strong> the transit epochs must always start from 0 at least for one planet. It means that epochs must be labeled from 0 at a reference epoch.</p>
+<p><strong>Note:</strong> the transit epochs must always start from 0 at least for one planet. It means that epochs must be labeled from 0 (first transit) at a reference epoch.</p>
 
 </div>
 </div>
@@ -13339,13 +13298,90 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">load_ttvs</span><span class="p">(</span><span class="s2">&quot;./inputs/planetb_ttvs.dat&quot;</span><span class="p">)</span>  <span class="c1"># Note that the data are in the inputs subdirectory</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">load_ttvs</span><span class="p">(</span><span class="s2">&quot;./inputs/planetb_ttvs.dat&quot;</span><span class="p">)</span>  <span class="c1"># Note that the data are in the -inputs- subdirectory</span>
 </pre></div>
 
     </div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>To ensure that the data are loaded, let's see it through:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">ttvs_data</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt output_prompt">Out[6]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>{0: [1.941979, 0.000144, 0.000144],
+ 1: [7.296786, 0.000283, 0.000283],
+ 2: [12.654408, 0.000314, 0.000314],
+ 3: [18.010997, 0.000356, 0.000356],
+ 4: [23.366161, 0.000336, 0.000336],
+ 5: [28.721616, 0.000361, 0.000361],
+ 6: [34.076309, 2.7e-05, 2.7e-05],
+ 7: [39.430975, 0.000234, 0.000234],
+ 8: [44.78561, 0.000235, 0.000235],
+ 9: [50.139923, 0.000305, 0.000305],
+ 10: [55.494308, 0.000217, 0.000217],
+ 11: [60.849909, 0.000168, 0.000168],
+ 12: [66.205092, 0.000235, 0.000235],
+ 13: [71.5626, 0.000431, 0.000431],
+ 14: [76.919171, 0.000491, 0.000491],
+ 15: [82.27419, 0.000275, 0.000275],
+ 16: [87.629573, 0.000303, 0.000303],
+ 17: [92.984421, 0.000206, 0.000206],
+ 18: [98.339094, 0.000446, 0.000446],
+ 19: [103.693807, 1.7e-05, 1.7e-05],
+ 20: [109.048341, 0.000388, 0.000388],
+ 21: [114.402898, 0.000223, 0.000223],
+ 22: [119.759281, 0.000285, 0.000285],
+ 23: [125.115041, 0.000188, 0.000188],
+ 24: [130.471949, 0.000164, 0.000164],
+ 25: [135.828253, 0.00044, 0.00044],
+ 26: [141.183152, 0.000322, 0.000322],
+ 27: [146.538369, 0.000106, 0.000106],
+ 28: [151.89324, 0.000155, 0.000155],
+ 29: [157.24782, 0.00035, 0.00035],
+ 30: [162.602483, 0.000279, 0.000279],
+ 31: [167.957217, 0.000286, 0.000286],
+ 32: [173.311894, 0.000161, 0.000161],
+ 33: [178.668988, 0.000365, 0.000365],
+ 34: [184.025246, 0.000218, 0.000218],
+ 35: [189.381276, 0.000235, 0.000235],
+ 36: [194.737143, 0.0003, 0.0003]}</pre>
+</div>
+
+</div>
+
 </div>
 </div>
 
@@ -13368,7 +13404,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>For a planet, we have 7 parameters that Nauyaca will explore (and the used units):</p>
+<p>For a planet, we have 7 parameters (and the required units) that Nauyaca will explore:</p>
 <ul>
 <li>Mass    -----  [M_earth]</li>
 <li>Period  ----- [days]</li>
@@ -13378,15 +13414,22 @@ div#notebook {
 <li>Mean anomaly  ----- [deg]</li>
 <li>Ascending node  ----- [deg]</li>
 </ul>
-<p>Now, in order to avoid exploring in a non-physical regions of the parameter space or with redundant information, it is necessary to establish especific boundaries for each planetary parameter. These boundaries will be used in the subsequent analysis.</p>
-<p>However, if nothing is known about one or more parameters, a $default$ set of boundaries will be established. Let's see which are these default boundaries by calling the physical limits established inside the constants of Nauyaca:</p>
+<p>Now, in order to avoid exploring in a non-physical region of the parameter space or with redundant information, it is necessary to establish especific boundaries for each planetary parameter. These boundaries will be used in the subsequent analysis.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p><strong>Default boundaries:</strong> In many cases anything is known about one or more parameters. In that case a $default$ set of boundaries will be established. Let's see which are these defaul boundaries by calling the physical limits established inside the constants of Nauyaca:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">nau</span><span class="o">.</span><span class="n">constants</span><span class="o">.</span><span class="n">physical_bounds</span>
@@ -13402,7 +13445,7 @@ div#notebook {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[30]:</div>
+    <div class="prompt output_prompt">Out[7]:</div>
 
 
 
@@ -13436,13 +13479,14 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">20.</span><span class="p">]</span>             <span class="c1"># Planet mass [Mearth]</span>
+<div class=" highlight hl-ipython3"><pre><span></span>                                      <span class="c1">#     LIMITS FOR:</span>
+<span class="n">Planetb</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">20.</span><span class="p">]</span>               <span class="c1"># Planet mass [Mearth]</span>
 <span class="n">Planetb</span><span class="o">.</span><span class="n">period</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.35</span><span class="p">,</span> <span class="mf">5.36</span><span class="p">]</span>         <span class="c1"># Orbital period [days]</span>
-<span class="n">Planetb</span><span class="o">.</span><span class="n">ecc</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]</span>                <span class="c1"># eccentricity. Look at the lower limit!</span>
-<span class="n">Planetb</span><span class="o">.</span><span class="n">inclination</span> <span class="o">=</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">95</span><span class="p">]</span>         <span class="c1"># Orbital inclination [deg]</span>
+<span class="n">Planetb</span><span class="o">.</span><span class="n">ecc</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]</span>               <span class="c1"># eccentricity. Look at the lower limit!</span>
+<span class="n">Planetb</span><span class="o">.</span><span class="n">inclination</span> <span class="o">=</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">95</span><span class="p">]</span>        <span class="c1"># Orbital inclination [deg]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">Planetb</span><span class="p">)</span>  <span class="c1"># print a summary of our Planet object</span>
 </pre></div>
@@ -13473,7 +13517,7 @@ Planet : Planet-b
     argument: (0.0, 360)  [deg]
     mean_anomaly: (0.0, 360)  [deg]
     ascending_node: (0.0, 360.0)  [deg]
-  TTVs: False
+  TTVs: True
 </pre>
 </div>
 </div>
@@ -13486,7 +13530,7 @@ Planet : Planet-b
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>From here, we can notice of two things:</p>
-<p><strong>1.-</strong> There is a dialog from Nauyaca (starting with --&gt;) that say tu us that the lower boundary of eccentricity have been set to 1e-06. Why is that? It is because we manually set the eccentricity lower limit to 0, but this value is lower than the default lower limit in eccentricity mentioned previously: 1e-0.6. Thus, Nauyaca prevents of giving boundaries manually outside the default physical boundaries, which by design, have been thought to consider almost any kind of planets and orbits.</p>
+<p><strong>1.-</strong> There is a dialog from Nauyaca (starting with --&gt;) that say tu us that the lower boundary of eccentricity have been set to 1e-06. Why is that? It is because we manually set the eccentricity lower limit to 0, but this value is lower than the default lower limit in eccentricity mentioned previously: 1e-06. Thus, Nauyaca prevents of giving boundaries manually outside the default physical boundaries, which by design, have been thought to consider almost any kind of planets and orbits. We'll see how to modify these default boundaries in tutorial 5.</p>
 <p>A similar thing would happens, for example, if we set a negative lower limit in masses (which have not sense). In this case, the negative limit will be changed to 0.0123032 (M_earth).</p>
 <p><strong>2.-</strong> We did not establish boundaries for argument of periastron, mean anomaly or ascending node, and thus the default boundaries arise.</p>
 
@@ -13498,14 +13542,14 @@ Planet : Planet-b
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>Fixed parameters:</strong> To keep a planetary parameter constant just set the lower and upper boundaries equal.</p>
 <p>For example: By construction in the coordinate system, the ascending node of $at$ $least$ $one$ $planet$ in the system must be fixed.
-Let's keep fixed this angle to the correct ascending node of "Planet-b", by setting equal values in the lower and upper boundaries:</p>
+Let's keep fixed this angle to the correct ascending node of "Planet-b" (true values can be seen in the file inputs/true_solution), by setting equal values in the lower and upper boundaries:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">ascending_node</span> <span class="o">=</span> <span class="p">[</span><span class="mf">88.36</span><span class="p">,</span> <span class="mf">88.36</span><span class="p">]</span>  <span class="c1"># Ascending node [deg]</span>
@@ -13527,7 +13571,7 @@ Let's keep fixed this angle to the correct ascending node of "Planet-b", by sett
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Great! that's all we need to define the properties of a planet. Let's do the same for the second planet.
+<p>Great! that's all we need to define the parameter space of a planet. Let's do the same for the second planet.
 Let's create another planet object and do the same as before:</p>
 
 </div>
@@ -13545,8 +13589,8 @@ Let's create another planet object and do the same as before:</p>
 <span class="n">Planetc</span><span class="o">.</span><span class="n">load_ttvs</span><span class="p">(</span><span class="s2">&quot;./inputs/planetc_ttvs.dat&quot;</span><span class="p">)</span>
 
 <span class="c1"># Set boundaries</span>
-<span class="n">Planetc</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">]</span>        <span class="c1"># Let&#39;s exploree up to 50 Earth masses</span>
-<span class="n">Planetc</span><span class="o">.</span><span class="n">period</span> <span class="o">=</span> <span class="p">[</span><span class="mf">11.83</span><span class="p">,</span> <span class="mf">11.84</span><span class="p">]</span>  <span class="c1"># Assuming the period is aroung 11.83 days </span>
+<span class="n">Planetc</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">]</span>           <span class="c1"># Let&#39;s exploree up to 50 Earth masses</span>
+<span class="n">Planetc</span><span class="o">.</span><span class="n">period</span> <span class="o">=</span> <span class="p">[</span><span class="mf">11.83</span><span class="p">,</span> <span class="mf">11.84</span><span class="p">]</span>  <span class="c1"># Assuming the period is aroung 11.835 days </span>
 <span class="n">Planetc</span><span class="o">.</span><span class="n">ecc</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">.</span><span class="mi">2</span><span class="p">]</span>
 <span class="n">Planetc</span><span class="o">.</span><span class="n">inclination</span> <span class="o">=</span> <span class="p">[</span><span class="mi">85</span><span class="p">,</span> <span class="mi">95</span><span class="p">]</span>
 <span class="c1"># Let&#39;s considerate just prograde solutions, i.e, +/-90° around ascending node of first planet</span>
@@ -13575,7 +13619,7 @@ Let's create another planet object and do the same as before:</p>
 --&gt; Parameter -ecc- of planet -Planet-c- set to lower physical limit: 1e-06
 Planet : Planet-c
   Boundaries:
-    mass: (1, 100)  [M_earth]
+    mass: (1, 50)  [M_earth]
     period: (11.83, 11.84)  [d]
     ecc: (1e-06, 0.2)   
     inclination: (85, 95)  [deg]
@@ -13594,7 +13638,7 @@ Planet : Planet-c
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Now we have two independent Planet objects. Let's join them together in a Planetary System object.</p>
+<p>Now we have two independent Planet objects: Planetb and Planetc. Let's join them together in a Planetary System object.</p>
 
 </div>
 </div>
@@ -13631,7 +13675,8 @@ Planet : Planet-c
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Okay, but it is not a planetary systems if there are not planets! So, let's add the Planet objects created before by passing a list with the Planet objects inside:</p>
+<p>Okay, but it is not a planetary systems if there are no planets! So, let's add the Planet objects created before by passing a list with the Planet objects inside.</p>
+<p><strong>Note:</strong> The ordering is important!! It's more intuitive if you add them according to the proximity to the star</p>
 
 </div>
 </div>
@@ -13641,7 +13686,7 @@ Planet : Planet-c
 <div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># The ordering is important!! It&#39;s more intuitive if you add them according to the proximity to the star</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># adding planets</span>
 <span class="n">PS</span><span class="o">.</span><span class="n">add_planets</span><span class="p">([</span><span class="n">Planetb</span><span class="p">,</span> <span class="n">Planetc</span><span class="p">])</span> 
 </pre></div>
 
@@ -13659,7 +13704,7 @@ Planet : Planet-c
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>--&gt; Upper mass boundary for planet -Planet-b- has been set to 1.0% of stellar mass: 3040.4635872919343 [Mearth]
+<pre>--&gt; Parameter -ecc- of planet -Planet-b- set to lower physical limit: 1e-06
 --&gt; Parameter -ecc- of planet -Planet-c- set to lower physical limit: 1e-06
 </pre>
 </div>
@@ -13701,6 +13746,7 @@ Planet : Planet-c
 <div class="output_subarea output_stream output_stdout output_text">
 <pre>
  =========== Planetary System Summary =========== 
+--&gt; Parameter -ecc- of planet -Planet-b- set to lower physical limit: 1e-06
 --&gt; Parameter -ecc- of planet -Planet-c- set to lower physical limit: 1e-06
 
 System: SystemX
@@ -13708,20 +13754,20 @@ Mstar: 0.9132 Msun |  Rstar: 0.8632 Rsun
 Number of planets: 2
 Planet information:
 ------
-Planet: Planet-b
+Planet1: Planet-b
   Boundaries:
-    mass: (0.0123032, 3040.4635872919343)  [M_earth]
-    period: (0.1, 1000.0)  [d]
-    ecc: (1e-06, 0.9)   
-    inclination: (0.0, 180.0)  [deg]
+    mass: (1, 20.0)  [M_earth]
+    period: (5.35, 5.36)  [d]
+    ecc: (1e-06, 0.2)   
+    inclination: (85, 95)  [deg]
     argument: (0.0, 360)  [deg]
     mean_anomaly: (0.0, 360)  [deg]
-    ascending_node: (0.0, 360.0)  [deg]
-  TTVs: False
+    ascending_node: (88.36, 88.36)  [deg]
+  TTVs: True
 ------
-Planet: Planet-c
+Planet2: Planet-c
   Boundaries:
-    mass: (1, 100)  [M_earth]
+    mass: (1, 50)  [M_earth]
     period: (11.83, 11.84)  [d]
     ecc: (1e-06, 0.2)   
     inclination: (85, 95)  [deg]
@@ -13731,9 +13777,9 @@ Planet: Planet-c
   TTVs: True
 
 Simulation attributes: 
-Reference epoch of the solutions (T0JD): 6.0 [JD]
+Reference epoch of the solutions (T0JD): 1.0 [JD]
 Total time of TTVs data (Ftime): 196.0 [days]
-Timestep of the simulations (dt): 0.39432623333333366 [days]
+Timestep of the simulations (dt): 0.17847710000000017 [days]
 </pre>
 </div>
 </div>
@@ -13753,10 +13799,10 @@ Timestep of the simulations (dt): 0.39432623333333366 [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">nauplot</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">Plots_c</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>  <span class="c1"># Call the module specifying figure size</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">nauplot</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">Plots</span><span class="p">(</span><span class="n">PS</span><span class="p">)</span>  <span class="c1"># Call the module by passing the Planetary System</span>
 
 <span class="c1"># Plot TTVs!</span>
 <span class="n">nauplot</span><span class="o">.</span><span class="n">plot_TTVs</span><span class="p">(</span><span class="n">residuals</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># Don&#39;t make space for residuals</span>
@@ -13789,7 +13835,7 @@ Timestep of the simulations (dt): 0.39432623333333366 [days]
 
 
 <div class="output_png output_subarea ">
-<img src="data:image/png;base64,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
+<img src="data:image/png;base64,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+Ph45ebmqmfPnmaXZWnl5eW699579dVXXyk6Olrf+c53dP/996tTp05KTU1Vv3795Haf/Ltq4cKFSk1NNblia7ryyisVHR2tmJgYSdKMGTOUnp6uf/zjH5ozZ45OnDihc845R//93/+txMREk6u1nv3792vKlCn1/66srFRVVZXef//9M/YWUm5urvLz83XgwAGtWbNG/fr1k9T0sZDj5Oka62NTx0ZJHB9PcabPYlM/vxwfG2qsh00dG6Wm+4tTBBzklltuCeTl5QUCgUAgLy8vcMstt5hckfWVl5cH3n333fp///a3vw3MmjUrEAgEAv369QtUVVWZVZqtXHHFFYFdu3Y1+F5tbW1g2LBhgb/97W+BQCAQWLJkSWDmzJlmlGc7OTk5gfnz5wcCgcZ7i5P+9re/BQoLC0/rUVPHQo6Tp2usj00dGwMBjo+nOtNn8Uw/vxwfT3emHn7bt4+NgQDHx9ZwzJSJsrIyFRQUaNSoUZKkUaNGqaCgQIcOHTK5MmuLj4/XJZdcUv/v733veyosLDSxosjx8ccfKyYmRoMHD5YkjR8/XuvXrze5Kuurrq7WmjVrdOONN5pdiuUNHjxYKSkpDb7X1LGQ42TjGusjx8bWaayHTeH4eLrmesixMTiOmTJx8OBBdenSRVFRUZKkqKgoJScn6+DBg/WnuNA0v9+v5cuX68orr6z/3i233KLa2loNHTpUd999t6Kjo02s0NpmzJihQCCgiy66SL/61a908OBBdevWrf7xTp06ye/315+qRuNef/11denSReeff379907t7VlnnWVihdbW1LEwEAhwnGyDxo6NEsfHlmrs55fjY+s1dmyUOD62lGNGiBG8Bx54QB06dNDEiRMlSW+++ab+8pe/6Pnnn9fevXu1ZMkSkyu0rueff14vv/yyXnrpJQUCAd1///1ml2RbL730UoMREHoLs516bJQ4PrYUP7/GOfXYKNHf1nBMIE5JSVFxcbFqa2slSbW1tSopKWnVKRwny83N1Zdffqnf//739ReJ1PUuNjZWN910kz788EMzS7S0ul5FR0fr5ptv1ocffqiUlJQGp1gPHTokt9vN6EcTiouL9be//U2jR4+u/15jvcWZNXUs5DjZeo0dGyWOjy11pp9fjo+t09ixUeL42BqOCcSJiYlKS0vT2rVrJUlr165VWloapwFb4KGHHtLH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
 "
 >
 </div>
@@ -13822,7 +13868,7 @@ Timestep of the simulations (dt): 0.39432623333333366 [days]
 <ul>
 <li><p><strong>T0JD:</strong> It is the reference time at which all the solutions found by Nauyaca will be referenced. By default, this number is automatically calculated by rounding down the smaller transit time found in the planet ephemerids.</p>
 </li>
-<li><p><strong>Ftime:</strong> It defines the maximum time of the simulations. By default, it is calculated automatically by rounding up the greater central time found in the planet ephemerids. If you define a lower value than the calculated by default, then, all the central transit times greater than this new  number will be discarted (for all the planets) and the fitting will be performed until this new final time.</p>
+<li><p><strong>Ftime:</strong> It defines the maximum time of the simulations. By default, it is calculated automatically by rounding up the greater central time found in the planet ephemeris. If you define a lower value than the calculated by default, then, all the central transit times greater than this new  number will be discarted (for all the planets) and the fitting will be performed until this new final time is reached in the simulations.</p>
 </li>
 <li><p><strong>dt:</strong> This is the timestep of the simulations. By default, it is calculated by dividing the period of the inner planet over 30, which represent the 3.33% of the orbital period of the inner planet. Note that a timestep lower than 5% of period corresponding to the internal planet is suggested to reach a good accuracy in the simulations</p>
 </li>
@@ -13834,7 +13880,7 @@ Timestep of the simulations (dt): 0.39432623333333366 [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[47]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;T0JD: </span><span class="si">{PS.T0JD}</span><span class="s2">  [days]&quot;</span><span class="p">)</span>
@@ -13877,13 +13923,15 @@ dt: 0.17847710000000017  [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[48]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Setting the simulation attributes</span>
 <span class="n">PS</span><span class="o">.</span><span class="n">simulation</span><span class="p">(</span><span class="n">T0JD</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">Ftime</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">dt</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="n">PS</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;T0JD: </span><span class="si">{PS.T0JD}</span><span class="s2">  [days]&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Ftime: </span><span class="si">{PS.Ftime}</span><span class="s2">  [days]&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;dt: </span><span class="si">{PS.dt}</span><span class="s2">  [days]&quot;</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13900,42 +13948,9 @@ dt: 0.17847710000000017  [days]
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>
- =========== Planetary System Summary =========== 
---&gt; Parameter -ecc- of planet -Planet-b- set to lower physical limit: 1e-06
---&gt; Parameter -ecc- of planet -Planet-c- set to lower physical limit: 1e-06
-
-System: SystemX
-Mstar: 0.9132 Msun |  Rstar: 0.8632 Rsun
-Number of planets: 2
-Planet information:
-------
-Planet: Planet-b
-  Boundaries:
-    mass: (1, 20.0)  [M_earth]
-    period: (5.35, 5.36)  [d]
-    ecc: (1e-06, 0.2)   
-    inclination: (85, 95)  [deg]
-    argument: (0.0, 360)  [deg]
-    mean_anomaly: (0.0, 360)  [deg]
-    ascending_node: (88.36, 88.36)  [deg]
-  TTVs: True
-------
-Planet: Planet-c
-  Boundaries:
-    mass: (1, 100)  [M_earth]
-    period: (11.83, 11.84)  [d]
-    ecc: (1e-06, 0.2)   
-    inclination: (85, 95)  [deg]
-    argument: (0.0, 360)  [deg]
-    mean_anomaly: (0.0, 360)  [deg]
-    ascending_node: (0.0, 180.0)  [deg]
-  TTVs: True
-
-Simulation attributes: 
-Reference epoch of the solutions (T0JD): 0.0 [JD]
-Total time of TTVs data (Ftime): 200 [days]
-Timestep of the simulations (dt): 0.15 [days]
+<pre>T0JD: 0.0  [days]
+Ftime: 200  [days]
+dt: 0.15  [days]
 </pre>
 </div>
 </div>
@@ -13973,8 +13988,8 @@ Timestep of the simulations (dt): 0.15 [days]
 <li><strong>json:</strong> </li>
 </ul>
 <p>$Advantages:$ Human readable format; no conflicts with Nauyaca versions.</p>
-<p>$Disadvantages:$ Larger file size than pickle format; could fail if trying to save non-serializable objects (rare to happen in Nauyaca).</p>
-<p>Each one of them have advantages and disadvantages. Thus, we recommend saving in both formats with the aim of having a backup of the studied planetary system.</p>
+<p>$Disadvantages:$ Larger file size than pickle format; could fail if trying to save non-serializable objects (difficult to occur in Nauyaca).</p>
+<p>Each one of them have advantages and disadvantages. Thus, we recommend saving in <strong>both</strong> formats with the aim of having a backup of the studied planetary system.</p>
 <p>We save our system in these formats by doing:</p>
 
 </div>
@@ -13982,10 +13997,10 @@ Timestep of the simulations (dt): 0.15 [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[49]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_pickle</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_pickle</span>  <span class="c1"># Save in pickle format</span>
 </pre></div>
 
     </div>
@@ -14013,10 +14028,10 @@ Timestep of the simulations (dt): 0.15 [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[50]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_json</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_json</span>   <span class="c1"># Save in json format</span>
 </pre></div>
 
     </div>
@@ -14062,1186 +14077,6 @@ Timestep of the simulations (dt): 0.15 [days]
 <div class="text_cell_render border-box-sizing rendered_html">
 <hr>
 
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>When the Planetary System is created, a .pkl file is saved. This is a python pickle file that contains the Planetary System object and all the necessary to restart TTVs simulations. This file will be useful soonly.</p>
-<p>Let's print a summary of our Planetary system</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>We can access to many properties of the planetary system, for example:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[25]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Bounds are in the same order as you added the planets</span>
-<span class="c1"># FOR EACH PLANET, the order of the parameter space is:</span>
-<span class="c1"># 0.-mass, 1.-period, 2.-eccentricity, 3.-inclination, </span>
-<span class="c1"># 4.-argument, 5.-mean anomaly, 6.-ascending node</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Bounds: &quot;</span><span class="p">,</span> <span class="n">PS</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span> 
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Bounds:  [[0.1, 20.0], [33.616, 33.618], [1e-05, 0.2], [88, 90.0], [0.0, 360.0], [0.0, 360.0], [0.1, 20], [73.506, 73.508], [1e-05, 0.2], [88, 90.0], [0.0, 360.0], [0.0, 360.0], [90.0, 270.0]]
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>For clarity, params_names can helps to identify the whole parameter space</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[26]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Boundaries:&quot;</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">names</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">PS</span><span class="o">.</span><span class="n">params_names</span><span class="o">.</span><span class="n">split</span><span class="p">()):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{names}</span><span class="s2">: </span><span class="si">{PS.bounds[i]}</span><span class="s2">&quot;</span> <span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Boundaries:
-mass1: [0.1, 20.0]
-period1: [33.616, 33.618]
-ecc1: [1e-05, 0.2]
-inclination1: [88, 90.0]
-argument1: [0.0, 360.0]
-mean_anomaly1: [0.0, 360.0]
-mass2: [0.1, 20]
-period2: [73.506, 73.508]
-ecc2: [1e-05, 0.2]
-inclination2: [88, 90.0]
-argument2: [0.0, 360.0]
-mean_anomaly2: [0.0, 360.0]
-ascending_node2: [90.0, 270.0]
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>If there is a planet with constant values in its parameter space, then, it will be saved as a dictionary, being the KEY the index of the parameter and the VALUE the constant.</p>
-<p>For example, if PS.constant_params={6:180} , it means that the ascending node of the first planet is fixed to 180 deg. On the other hand, if PS.constant_params={9:0.1}, then the eccentricity of second planet is fixed to 0.1</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[28]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># 0:mass1; 1:period1; 2:ecc1; 3:inc1; 4:argument; 5:Mean_anomaly1; 6:ascending_node1;</span>
-<span class="c1"># 7:mass2; 8:period2; 9:ecc2; ...</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Constant params: &quot;</span><span class="p">,</span> <span class="n">PS</span><span class="o">.</span><span class="n">constant_params</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Constant params:  {6: 180.0}
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Another useful data:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[29]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Order of planets entrance: &quot;</span><span class="p">,</span> <span class="n">PS</span><span class="o">.</span><span class="n">planets_IDs</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Order of planets entrance:  {&#39;Planet-b&#39;: 0, &#39;Planet-c&#39;: 1}
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[30]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TTVs: </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">PS</span><span class="o">.</span><span class="n">TTVs</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>TTVs: 
- {&#39;Planet-b&#39;: {0: [21.5523131438, 0.000629, 0.000384], 1: [55.1728893405, 0.000758, 0.000739], 2: [88.7952811376, 0.000562, 0.0004], 3: [122.418924701, 0.000559, 0.000774], 4: [156.041707622, 0.000619, 0.000623], 5: [189.669905447, 0.000975, 0.000898], 6: [223.293933475, 0.00079, 0.000654], 7: [256.923266313, 0.000856, 0.00084], 8: [290.550182491, 0.000319, 0.000548], 9: [324.168450812, 0.000524, 0.000849], 10: [357.788534159, 0.000374, 0.000499], 11: [391.407056892, 0.000406, 0.000627], 12: [425.027105064, 0.000602, 0.000454], 13: [458.649125492, 0.000805, 0.000671], 14: [492.272085472, 0.000815, 0.000871], 15: [525.895441419, 0.000733, 0.00058], 16: [559.522024235, 0.000834, 0.000946], 17: [593.145545227, 0.000628, 0.000589], 18: [626.777478433, 0.000703, 0.000679], 19: [660.405076718, 0.000474, 0.000478], 20: [694.025509307, 0.000929, 0.000471], 21: [727.647086939, 0.00042, 0.000678], 22: [761.264268301, 0.000821, 0.000723], 23: [794.88325384, 0.000627, 0.000387], 24: [828.503616346, 0.000848, 0.000932], 25: [862.125003921, 0.000836, 0.000615], 26: [895.747786618, 0.000704, 0.000706], 27: [929.372362937, 0.000932, 0.000838], 28: [962.995198016, 0.000738, 0.000887], 29: [996.625070414, 0.000635, 0.000691]}, &#39;Planet-c&#39;: {0: [73.2486014843, 0.000691, 0.000637], 1: [146.749468487, 0.000721, 0.000657], 2: [220.242349774, 0.00106, 0.000761], 3: [293.731167555, 0.000681, 0.00066], 4: [367.236122944, 0.000765, 0.000521], 5: [440.742560354, 0.000611, 0.000636], 6: [514.244522696, 0.000808, 0.000964], 7: [587.740187014, 0.000817, 0.000556], 8: [661.22596746, 0.000676, 0.000238], 9: [734.727512055, 0.000669, 0.000667], 10: [808.23541199, 0.000822, 0.000898], 11: [881.740031029, 0.000707, 0.000672], 12: [955.239265511, 0.000532, 0.000595]}}
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[32]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First transit of planet b: &quot;</span><span class="p">,</span> <span class="n">PS</span><span class="o">.</span><span class="n">TTVs</span><span class="p">[</span><span class="s2">&quot;Planet-c&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>First transit of planet b:  [73.2486014843, 0.000691, 0.000637]
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[33]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Second term of the Loglikelihood: &quot;</span><span class="p">,</span> <span class="n">PS</span><span class="o">.</span><span class="n">second_term_logL</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area">
-
-    <div class="prompt"></div>
-
-
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>Second term of the Loglikelihood:  {&#39;Planet-b&#39;: -82.30980735748551, &#39;Planet-c&#39;: -35.438919859136085}
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<hr>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>At this point, a pickle file has been authomatically saved. This file contains the Planetary System object and its attributes (e.g., planets) and will be helpful to run TTVs simulation in another time or computer as well as for making figures.</p>
-<p>Doing that, we are ready to beggin the TTVs fitting.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Runing-the-optimizers">Runing the optimizers<a class="anchor-link" href="#Runing-the-optimizers">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Optimizers are helpful to quickly explore the parameter space and search approximate solutions to the TTVs through minimizing chi square statistic.
-Optimizers joint Differential Evolution and Nelder-Mead minimization methods. Firstly, Differential Evolution explores the parameter space of each planet and looks for the best solution to the TTVs. Then, Nelder-Mead takes that solution and refines it.</p>
-<p>To run it, jus call .run_optimizers and pass the Planetary System object, the number of solutions to look for (niter) and specify the number of cores to run in parallel (cores).</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Run Optimizers. Results of this method are saved at &#39;OPT&#39; plus the Planetary System name</span>
-<span class="n">RESULTS_opt</span> <span class="o">=</span> <span class="n">Optimizers</span><span class="o">.</span><span class="n">run_optimizers</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">nsols</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">cores</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Results have been saved in a .opt file. All the solutions from the optimizer consist in a list, being the first element the $\chi^2$ and the rest are the planetary parameters of the first planet concatenated with planetary parameters of the next planet(s). A flag of chi square of 1e+50 could rise if the minimizers could not find a solution.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># The firt 3 results (unordered by chi2)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">RESULTS_opt</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's plot some results:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Mass of planet b (Mass1)</span>
-<span class="n">m1</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">RESULTS_opt</span><span class="p">]</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">distplot</span><span class="p">(</span><span class="n">m1</span><span class="p">,</span> <span class="n">kde</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$Mass1$&#39;</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
-<span class="c1"># Eccentricity of planet c (ecc2)</span>
-<span class="n">e2</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">10</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">RESULTS_opt</span><span class="p">]</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">distplot</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">kde</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;orange&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$ecc2$&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Best solution from the optimizers</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># We sort the results according to the chi square</span>
-<span class="n">sort_res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">RESULTS_opt</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">j</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-<span class="c1"># Let&#39;s take &#39;the best&#39;</span>
-<span class="n">bestChi2</span> <span class="o">=</span> <span class="n">sort_res</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">best_planetary_params</span> <span class="o">=</span> <span class="n">sort_res</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Best result of the optimizers:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;chi_2: &quot;</span><span class="p">,</span> <span class="n">bestChi2</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--&gt; Planetary parameters: &quot;</span><span class="p">,</span> <span class="n">best_planetary_params</span><span class="p">)</span>
-
-<span class="c1"># Splitting by number of planets in the system:</span>
-<span class="n">planets</span> <span class="o">=</span> <span class="p">[</span><span class="n">best_planetary_params</span><span class="p">[:</span><span class="mi">7</span><span class="p">],</span> <span class="n">best_planetary_params</span><span class="p">[</span><span class="mi">7</span><span class="p">:]]</span>
-<span class="n">pla1</span> <span class="o">=</span> <span class="n">planets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">pla2</span> <span class="o">=</span> <span class="n">planets</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--&gt; Best planetary parameters for planet1: &quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  &quot;</span><span class="p">,</span> <span class="n">pla1</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--&gt; Best planetary parameters for planet2: &quot;</span><span class="p">,)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  &quot;</span><span class="p">,</span> <span class="n">pla2</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h5 id="Remember-that-the-7-Planetary-parameters-follow-always-the-order:">Remember that the 7 Planetary parameters follow always the order:<a class="anchor-link" href="#Remember-that-the-7-Planetary-parameters-follow-always-the-order:">&#182;</a></h5><h5 id="mass,-period,-eccentricity,-inclination,-argument,-mean-anomaly-and-ascending-node">mass, period, eccentricity, inclination, argument, mean anomaly and ascending node<a class="anchor-link" href="#mass,-period,-eccentricity,-inclination,-argument,-mean-anomaly-and-ascending-node">&#182;</a></h5>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's plot the best 3 solutions from the optimizer and compare them with the observed TTVs. To do that, we import a useful function in the nauyaca package: plot_TTVs.</p>
-<p>Pass the Planetary Object and a list of lists with the solutions you want to plot</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_TTVs</span>
-
-<span class="c1"># Extract the best n solutions</span>
-<span class="n">n_sols</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="n">best_n_solutions</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sort_res</span><span class="p">[:</span><span class="n">n_sols</span><span class="p">]]</span>
-<span class="c1">#print(best_n_solutions)</span>
-
-<span class="c1"># Plot the observed TTVs and the 3 solutions</span>
-<span class="n">plot_TTVs</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">best_n_solutions</span><span class="p">)</span>
-
-<span class="c1"># Change figure size</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">)</span>
-
-<span class="c1">#plt.savefig(&quot;TTVs_optimizer.png&quot;)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Ok, that does not looks like an ideal TTVs fit. Results from the optimizers provide an overall outlook of the solutions in the parameter space. To get better solutions, just increase the number of solution in Optimizers.run_optimizers. These solutions can be used to initialize walkers in the MCMC.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Runing-the-MCMC">Runing the MCMC<a class="anchor-link" href="#Runing-the-MCMC">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>We employ Parallel-Tempering sampling algorithm to explore the parameter space at different walker temperatures. This method allows the walkers do not get stuck in local high probability regions due to the exchange between high and low temperature walkers. The posteriors are drawn from the walkers at temperature 0.</p>
-<p>Let's define the main parameters to run the MCMC</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">Ntemps</span> <span class="o">=</span> <span class="mi">10</span>       <span class="c1"># Number of temperatures</span>
-<span class="n">Nwalkers</span> <span class="o">=</span> <span class="mi">250</span>    <span class="c1"># Number of walkers per temperature</span>
-<span class="n">Tmax</span> <span class="o">=</span> <span class="mf">1e3</span>        <span class="c1"># Maximum temperature. If None, then Parallel-Tempering chose an appropiate maximum temperature</span>
-
-<span class="n">itmax</span> <span class="o">=</span> <span class="mi">1000</span>      <span class="c1"># Maximum number of steps</span>
-<span class="n">conver_steps</span> <span class="o">=</span> <span class="mi">10</span> <span class="c1"># Number of steps to save the chains</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Initial walkers should be provided in an array of shape (ntemps, nwalkers, ndim), where ndim is the number of dimensions (mass1, period1...).</p>
-<p>We provides 3 forms of easily initialize walkers.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">utils</span> <span class="k">import</span> <span class="n">initial_walkers</span>
-
-<span class="c1"># You cand initialize walkers from the results of the optimizers</span>
-<span class="c1"># from a previous run just typing:</span>
-<span class="c1">#RESULTS_opt = list(np.genfromtxt(&#39;SystemX.opt&#39;))</span>
-
-
-<span class="sd">&quot;&quot;&quot; 1) Uniform distribution</span>
-<span class="sd"> For all the planetary parameters, initialize walkers from an uniform distribution</span>
-<span class="sd"> along the stablished boundaries for each planet&quot;&quot;&quot;</span>
-<span class="c1"># Using this option is unnecesary to run optimizers previously</span>
-<span class="n">walkers_uniform</span> <span class="o">=</span> <span class="n">initial_walkers</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">distribution</span><span class="o">=</span><span class="s2">&quot;Uniform&quot;</span><span class="p">,</span> 
-                                 <span class="n">ntemps</span><span class="o">=</span><span class="n">Ntemps</span><span class="p">,</span> <span class="n">nwalkers</span><span class="o">=</span><span class="n">Nwalkers</span><span class="p">)</span>
-
-<span class="sd">&quot;&quot;&quot;   2) Gaussian distribution</span>
-<span class="sd"> Provide directly the results of the optimizers (throuhgt opt_data argument) and </span>
-<span class="sd"> construct a gaussian with the mean and std of the solutions along each dimension.&quot;&quot;&quot;</span>
-<span class="c1"># In opt_data, pass RESULTS_opt (from optimizers) or results_opt (from file)</span>
-<span class="c1"># treshold selects a fraction of the best solutions and discard the rest.</span>
-<span class="c1"># For example, .8 takes the 80% of the solutions with the best Chi**2</span>
-<span class="n">walkers_gaussian</span> <span class="o">=</span> <span class="n">initial_walkers</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">distribution</span><span class="o">=</span><span class="s2">&quot;Gaussian&quot;</span><span class="p">,</span> 
-                                   <span class="n">ntemps</span><span class="o">=</span><span class="n">Ntemps</span><span class="p">,</span> <span class="n">nwalkers</span><span class="o">=</span><span class="n">Nwalkers</span><span class="p">,</span> 
-                                   <span class="n">opt_data</span><span class="o">=</span><span class="n">RESULTS_opt</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>    
-
-<span class="sd">&quot;&quot;&quot;   3) Picked distribution</span>
-<span class="sd">  Provide directly the results of the optimizers (throuhgt opt_data argument) and </span>
-<span class="sd">  construct a discrete distribution by randomly selecting exact values of the optimizer solutions&quot;&quot;&quot;</span>
-<span class="c1"># In opt_data, pass RESULTS_opt (from optimizers) or results_opt (from file)</span>
-<span class="c1"># treshold selects a fraction of the best solutions and discard the rest.</span>
-<span class="c1"># For example, .8 takes the 80% of the solutions with the best Chi**2</span>
-<span class="n">walkers_picked</span> <span class="o">=</span> <span class="n">initial_walkers</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">distribution</span><span class="o">=</span><span class="s2">&quot;Picked&quot;</span><span class="p">,</span> 
-                                 <span class="n">ntemps</span><span class="o">=</span><span class="n">Ntemps</span><span class="p">,</span> <span class="n">nwalkers</span><span class="o">=</span><span class="n">Nwalkers</span><span class="p">,</span> 
-                                 <span class="n">opt_data</span><span class="o">=</span><span class="n">RESULTS_opt</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Note that if there are constant values in the planet's boundaries, then that parameter will be skipped and values will not appear in the initial walkers</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Comparing the initial distributions of the walkers for the dimension -dim- of temperature 0</span>
-<span class="c1"># For dim: 0: mass1, 1: period1, ...,7: mass2, 8: period2..</span>
-
-<span class="n">dim</span> <span class="o">=</span> <span class="mi">7</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Initial distribution of dimension </span><span class="si">{dim}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">walkers_uniform</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,</span><span class="n">dim</span><span class="p">],</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Uniform&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">walkers_gaussian</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,</span><span class="n">dim</span><span class="p">],</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Gaussian&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">walkers_picked</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,</span><span class="n">dim</span><span class="p">],</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Picked&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">PS</span><span class="o">.</span><span class="n">params_names</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="n">dim</span><span class="p">])</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's select the picked option to run the MCMC</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">RESULTS_mcmc</span> <span class="o">=</span> <span class="n">MCMC</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span>
-            <span class="n">PS</span><span class="p">,</span>                           <span class="c1"># Planetary System object</span>
-            <span class="n">pop0</span><span class="o">=</span><span class="n">walkers_picked</span><span class="p">,</span>        <span class="c1"># Initial population of walkers </span>
-            <span class="n">nwalkers</span><span class="o">=</span><span class="n">Nwalkers</span><span class="p">,</span>            <span class="c1"># Number of walkers</span>
-            <span class="n">ntemps</span><span class="o">=</span><span class="n">Ntemps</span><span class="p">,</span>                <span class="c1"># Number of temperatures</span>
-            <span class="n">Tmax</span><span class="o">=</span><span class="n">Tmax</span><span class="p">,</span>                    <span class="c1"># Maximum temperature</span>
-            <span class="n">betas</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>                   <span class="c1"># Betas is an array of inverse temperatures</span>
-            <span class="n">Itmax</span><span class="o">=</span><span class="n">itmax</span><span class="p">,</span>                  <span class="c1"># Maximum nomber of iterations (steps)</span>
-            <span class="n">conver_steps</span><span class="o">=</span><span class="n">conver_steps</span><span class="p">,</span>    <span class="c1"># Save data each this number of steps</span>
-            <span class="n">cores</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>                      <span class="c1"># Number of cores to run in parallel</span>
-            <span class="n">suffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>                    <span class="c1"># Suffix to add at the final hdf5 file</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Results of the MCMC are saved in a .hdf5 file. Also at the end of the iterations, best solutions are extracted (corresponding to the solutions of 'better posterior') and saved in a .best file</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">h5py</span>
-<span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="s1">&#39;SystemX.hdf5&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;COL_NAMES&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">[:])</span>
-
-<span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h5 id="MCMC-Summary">MCMC Summary<a class="anchor-link" href="#MCMC-Summary">&#182;</a></h5>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Now, let's see a a summary of the results. Just provide the .hdf5 file.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">utils</span> <span class="k">import</span> <span class="n">mcmc_summary</span>
-
-<span class="n">mcmc_summary</span><span class="p">(</span><span class="s2">&quot;SystemX.hdf5&quot;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Visualization">Visualization<a class="anchor-link" href="#Visualization">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>There is a collection of prefabricated methods to easily visualize the results from the MCMC.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's visualize the histograms of the posteriors at temperature 0</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_hist</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">RESULTS_mcmc</span><span class="o">.</span><span class="n">chain</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-
-<span class="c1"># Let&#39;s pass the chains of temperature 0</span>
-<span class="c1"># burning remove a percentage of the initial chains</span>
-<span class="n">plot_hist</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="n">RESULTS_mcmc</span><span class="o">.</span><span class="n">chain</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">burning</span><span class="o">=.</span><span class="mi">2</span><span class="p">)</span>
-
-<span class="c1">#plt.savefig(&quot;histograms.png&quot;)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's visualize the chains at temperature 0</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_chains</span>
-
-<span class="n">plot_chains</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="n">RESULTS_mcmc</span><span class="o">.</span><span class="n">chain</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Iterations / </span><span class="si">{conver_steps}</span><span class="s1">&#39;</span><span class="p">)</span>
-
-<span class="c1">#plt.savefig(&quot;chains.png&quot;)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>And now, a corner plot to visualize possible correlation between parameters</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_corner</span>
-
-<span class="n">plot_corner</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="n">RESULTS_mcmc</span><span class="o">.</span><span class="n">chain</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">burning</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">)</span>
-
-<span class="c1">#plt.savefig(&quot;corner.png&quot;)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<hr>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="After-simulations">After simulations<a class="anchor-link" href="#After-simulations">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>At this point you can restart the kernel to simulate that we have finished the TTVs inversion and it is another time.</p>
-<p>Along the simulations many files have been saved automatically. Considering a Planetary System of name 'PSystem', the output files are:</p>
-
-<pre><code>* PSystem.pkl - Contains the Planetary System object saved through pickle.
-* PSystem.opt - Contains the results of the optimizers
-* PSystem.hdf5 - Contains the main features of the MCMC
-* PSystem.best - Contains the best solutions of each saved iteration in the MCMC sorted by -chi2</code></pre>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Now let's see how to analyze the results saved in those files, in another moment or in a different computer.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Let&#39;s load the Planetary System</span>
-<span class="kn">import</span> <span class="nn">pickle</span>
-
-<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;SystemX.pkl&#39;</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="nb">input</span><span class="p">:</span>
-    <span class="n">PS_pkl</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Result-from-the-optimizers">Result from the optimizers<a class="anchor-link" href="#Result-from-the-optimizers">&#182;</a></h3>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_TTVs</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-
-<span class="c1"># From the file</span>
-<span class="n">results_file</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;SystemX.opt&quot;</span><span class="p">)</span>
-<span class="n">results_opt</span> <span class="o">=</span> <span class="n">results_file</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>           <span class="c1">#Convert data array to list</span>
-
-<span class="n">sort_res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results_opt</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">j</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-<span class="c1"># Extract the best n solutions</span>
-<span class="n">n_sols</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="n">best_n_solutions</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sort_res</span><span class="p">[:</span><span class="n">n_sols</span><span class="p">]]</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">best_n_solutions</span><span class="p">)</span>
-
-<span class="c1"># Plot the observed TTVs and the 3 solutions</span>
-<span class="n">plot_TTVs</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">,</span> <span class="n">best_n_solutions</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">)</span>  <span class="c1"># Change figure size</span>
-
-
-<span class="c1">#plt.savefig(&quot;TTVs_optimizer.png&quot;)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Results-from-the-saved-hdf5">Results from the saved hdf5<a class="anchor-link" href="#Results-from-the-saved-hdf5">&#182;</a></h3>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's see how was de MCMC. plot_monitor will shou you a couple of plots to assess the performance of the MCMC</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Upper left: This is the behavior of the temperatures. They adapt by themselves to increase</span>
-<span class="sd">the exchange of walkers between hot and cold temperatures and viceversa. Black solid lines is for temperature 0.</span>
-
-<span class="sd">Upper right: This is the percentage of walkers exchanges. Black solid lines is for temperature 0.</span>
-
-<span class="sd">Lower left: This is the evolution of chi2. Blue line is the mean chi2 and orange is &#39;the best&#39; chi2.</span>
-
-<span class="sd">Lower right: Mean autocorrelation time. It&#39;s a measurement of the number of steps requiered to forget the initial</span>
-<span class="sd">chain state.</span>
-<span class="sd">&quot;&quot;&quot;</span>
-
-<span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_monitor</span>
-
-<span class="n">plot_monitor</span><span class="p">(</span><span class="s2">&quot;SystemX.hdf5&quot;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's make a Geweke test and plot to asses for ergodicity. It takes the first 10% of the chains and divide the last 50% in 20 chunks to perform a z-test comparing the medians. If values of the test are between -2 and 2, then it is evidence of convergence.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">utils</span> <span class="k">import</span> <span class="n">geweke</span>
-
-<span class="n">Z_test</span> <span class="o">=</span> <span class="n">geweke</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">,</span> <span class="n">hdf5_file</span><span class="o">=</span><span class="s1">&#39;SystemX.hdf5&#39;</span><span class="p">,</span><span class="n">burning</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">Z_test</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Geweke plot:</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">zt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">Z_test</span><span class="p">):</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">zt</span><span class="p">)),</span> <span class="n">zt</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">PS_pkl</span><span class="o">.</span><span class="n">params_names</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="n">i</span><span class="p">])</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> <span class="n">ncol</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Slice number&quot;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_hist</span>
-
-<span class="n">plot_hist</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hdf5_file</span><span class="o">=</span><span class="s1">&#39;SystemX.hdf5&#39;</span><span class="p">,</span> <span class="n">burning</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_chains</span>
-
-<span class="c1"># By default, temperature 0 will be used</span>
-<span class="n">plot_chains</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hdf5_file</span><span class="o">=</span><span class="s1">&#39;SystemX.hdf5&#39;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_corner</span>
-
-<span class="n">plot_corner</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">,</span> <span class="n">chains</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hdf5_file</span><span class="o">=</span><span class="s1">&#39;SystemX.hdf5&#39;</span><span class="p">,</span> <span class="n">burning</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">MCMC</span><span class="o">.</span><span class="n">extract_best_solutions</span><span class="p">(</span><span class="s2">&quot;SystemX.hdf5&quot;</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">plots</span> <span class="k">import</span> <span class="n">plot_TTVs</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-
-<span class="c1"># Best solutions found in the MCMC (from the file)</span>
-<span class="n">best_file</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="s2">&quot;SystemX.best&quot;</span><span class="p">)</span>
-<span class="n">results_mcmc</span> <span class="o">=</span> <span class="n">best_file</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="c1">#Convert data array to list</span>
-
-<span class="c1"># Reverse the list because we sorte by -chi**2</span>
-<span class="n">sort_res</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results_mcmc</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">j</span><span class="p">:</span> <span class="n">j</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-<span class="c1"># Extract the best n solutions</span>
-<span class="n">n_sols</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">sort_res</span><span class="p">[</span><span class="n">n_sols</span><span class="p">])</span>
-<span class="n">best_n_solutions</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sort_res</span><span class="p">[:</span><span class="n">n_sols</span><span class="p">]]</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">best_n_solutions</span><span class="p">)</span>
-
-<span class="c1"># Plot the observed TTVs and the 3 solutions</span>
-<span class="n">plot_TTVs</span><span class="p">(</span><span class="n">PS_pkl</span><span class="p">,</span> <span class="n">best_n_solutions</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">()</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span><span class="mi">12</span><span class="p">)</span>  <span class="c1"># Change figure size</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span> 
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Extra-features">Extra features<a class="anchor-link" href="#Extra-features">&#182;</a></h2>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Suposse you have a set of parameters and you want to calculate the central transit times produced by two planets along 300 days of observations. Well, this is how you can comunicate with TTVFast:</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">utils</span> <span class="k">import</span> <span class="n">run_TTVFast</span>
-
-<span class="n">set_of_params</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.33031</span><span class="p">,</span>  <span class="mf">33.62651</span><span class="p">,</span> <span class="mf">0.06558</span><span class="p">,</span> <span class="mf">88.47247</span><span class="p">,</span> <span class="mf">202.35109</span><span class="p">,</span> <span class="mf">246.71734</span><span class="p">,</span> <span class="mf">170.5195</span><span class="p">,</span>
-                 <span class="mf">11.60434</span><span class="p">,</span> <span class="mf">73.48983</span><span class="p">,</span> <span class="mf">0.19693</span><span class="p">,</span> <span class="mf">88.84697</span><span class="p">,</span> <span class="mf">61.90508</span><span class="p">,</span>  <span class="mf">121.72177</span><span class="p">,</span> <span class="mf">180.0</span><span class="p">]</span>
-
-<span class="n">transits</span> <span class="o">=</span> <span class="n">run_TTVFast</span><span class="p">(</span><span class="n">set_of_params</span><span class="p">,</span> <span class="n">mstar</span><span class="o">=</span><span class="mf">0.91</span><span class="p">,</span> <span class="n">NPLA</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">Tin</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">Ftime</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">transits</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>First list is the planet ID corresponding to the entrance order. Second list is the transit epochs. Third list are the central transit times. To facilitate the reading of the transits, let's provide a Planetary System object and the transits.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">utils</span> <span class="k">import</span> <span class="n">calculate_epochs</span>
-
-<span class="n">epochs</span> <span class="o">=</span> <span class="n">calculate_epochs</span><span class="p">(</span><span class="n">transits</span><span class="p">,</span> <span class="n">PS_pkl</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">epochs</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<p>Finally, let's calculate the chi2 of the set of parameters. Note that we removed the constant parameters from the set_of_params. It's because PS_pkl contains that information.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing code_cell rendered">
-<div class="input">
-<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
-<div class="inner_cell">
-    <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">utils</span> <span class="k">import</span> <span class="n">calculate_chi2</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Constants: &quot;</span><span class="p">,</span> <span class="n">PS_pkl</span><span class="o">.</span><span class="n">constant_params</span><span class="p">)</span>
-
-<span class="n">incomplete_params</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.33031</span><span class="p">,</span>  <span class="mf">33.62651</span><span class="p">,</span> <span class="mf">0.06558</span><span class="p">,</span> <span class="mf">88.47247</span><span class="p">,</span> <span class="mf">202.35109</span><span class="p">,</span> <span class="mf">246.71734</span><span class="p">,</span> <span class="mf">170.5195</span><span class="p">,</span>
-                     <span class="mf">11.60434</span><span class="p">,</span> <span class="mf">73.48983</span><span class="p">,</span> <span class="mf">0.19693</span><span class="p">,</span> <span class="mf">88.84697</span><span class="p">,</span> <span class="mf">61.90508</span><span class="p">,</span>  <span class="mf">121.72177</span> <span class="p">]</span> <span class="c1"># 180.0]</span>
-
-<span class="n">chi2</span> <span class="o">=</span> <span class="n">calculate_chi2</span><span class="p">(</span><span class="n">incomplete_params</span><span class="p">,</span> <span class="n">PS_pkl</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;chi2: &quot;</span><span class="p">,</span> <span class="n">chi2</span><span class="p">)</span>
-</pre></div>
-
-    </div>
-</div>
-</div>
-
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Additional-notes:">Additional notes:<a class="anchor-link" href="#Additional-notes:">&#182;</a></h3>
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<ul>
-<li>Sometimes there will raise an "Invalid proposal" legend. It just indicates that calculate_epochs could not determine transits due to non-transiting planets, planetary ejection, etc. Don't worry about that except if that's the only notification you see. In that case, consider to inspect the planetary boundaries.</li>
-</ul>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="The-End">The End<a class="anchor-link" href="#The-End">&#182;</a></h2>
 </div>
 </div>
 </div>

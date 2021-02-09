@@ -257,7 +257,7 @@
             "planet_id": "Planet-c",
             "mass": [
                 1,
-                100
+                50
             ],
             "period": [
                 11.83,
@@ -286,7 +286,7 @@
             "_boundaries_parameterized": [
                 [
                     1,
-                    100
+                    50
                 ],
                 [
                     11.83,
@@ -429,7 +429,7 @@
         ],
         [
             1,
-            100
+            50
         ],
         [
             11.83,
@@ -483,7 +483,7 @@
         ],
         [
             1,
-            100
+            50
         ],
         [
             11.83,
@@ -1070,6 +1070,7 @@
     "constant_params": {
         "6": 88.36
     },
+    "params_names_all": "mass1  period1  ecc1  inclination1  argument1  mean_anomaly1  ascending_node1  mass2  period2  ecc2  inclination2  argument2  mean_anomaly2  ascending_node2",
     "params_names": "mass1  period1  ecc1  inclination1  argument1  mean_anomaly1  mass2  period2  ecc2  inclination2  argument2  mean_anomaly2  ascending_node2",
     "ndim": 13,
     "hypercube": [
@@ -1148,7 +1149,7 @@
         95,
         720,
         360.0,
-        100,
+        50,
         11.84,
         0.2,
         95,
