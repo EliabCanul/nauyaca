@@ -13,13 +13,13 @@ from dataclasses import dataclass
 
 from .constants import colors, units_latex, labels
 
-__all__ = ["Plots_c"]
+__all__ = ["Plots"]
 
 
 # TODO: Include functions to visualize Optimizer results
 
 @dataclass
-class Plots_c:
+class Plots:
 
 
     PSystem : None
@@ -28,12 +28,12 @@ class Plots_c:
     burnin : float = 0.0  
     sns_context : str = 'notebook'
     sns_style : str = 'darkgrid'
-    size : tuple = (10,10)  # Size debe ser kwarg de cada plot con predefinidos
+    #size : tuple = (10,10)  # Size debe ser kwarg de cada plot con predefinidos
     colors = colors
 
 
 
-    def plot_TTVs(self, flat_params=None, mode='None', nsols=1, show_obs=True, residuals=True):
+    def plot_TTVs(self, flat_params=None, mode='None', nsols=1, show_obs=True, residuals=True, size=(10,10)):
 
         """Plot the observed TTVs signals and the transit solutions from flat_params
         
@@ -194,9 +194,9 @@ class Plots_c:
         # FIXME: There's a bug when the number of simulated transits doesn't 
         # coincide with the number of observations
         if nplots > 1:
-            fig, axes = plt.subplots(figsize=self.size, nrows=nplots, ncols=1, sharex=True)
+            fig, axes = plt.subplots(figsize=size, nrows=nplots, ncols=1, sharex=True)
         else: 
-            fig, axes = plt.subplots(figsize=self.size)
+            fig, axes = plt.subplots(figsize=size)
 
         # X limits
         l_xlim, r_xlim = self.PSystem.T0JD-1, self.PSystem.Ftime+1
@@ -459,7 +459,8 @@ class Plots_c:
                             color=colors[param], alpha=0.1)
 
                     axes[dim].set_ylabel(labels[param]+str(pla+1)+ "\n" + 
-                                                units_latex[param], labelpad=10)
+                                                units_latex[param], 
+                                                labelpad=10, rotation=45)
                     #dim += 1
                     # Plot means
                     if plot_means:
@@ -553,7 +554,7 @@ class Plots_c:
                     show_titles=titles, 
                     title_kwargs={"fontsize": 12}, 
                     title_fmt='.3f',
-                    label_kwargs={"fontsize": 12, "labelpad": 20},
+                    label_kwargs={"fontsize": 15, "labelpad": 20},
                     plot_contours=True, 
                     plot_datapoints=False, 
                     plot_density=True, 
@@ -576,7 +577,7 @@ class Plots_c:
         return
 
 
-    def plot_monitor(self):
+    def plot_monitor(self,size=(20,10)):
 
         sns.set(context=self.sns_context,style=self.sns_style)
 
@@ -590,7 +591,7 @@ class Plots_c:
         index = f['INDEX'].value[0]
         f.close()
 
-        _, axes = plt.subplots(nrows=2, ncols=2, figsize=(20,10), sharex=True)
+        _, axes = plt.subplots(nrows=2, ncols=2, figsize=size, sharex=True)
 
         # Temperatures
         axes[0,0].plot(1./betas)
@@ -624,7 +625,7 @@ class Plots_c:
 
 
 
-    def plot_convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1):
+    def plot_convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1,size=(20,10)):
 
         assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
 
@@ -649,7 +650,7 @@ class Plots_c:
         print("-- ", chains.shape)
 
         
-        _, axes = plt.subplots(nrows=2, ncols=1, figsize=(20,10))
+        _, axes = plt.subplots(nrows=2, ncols=1, figsize=size)
         symbols = {1:"o",2:"^",3:"x",4:"s",5:"P"}
         
 
