@@ -1,58 +1,46 @@
+Python 3.7 is required. Also, -pipenv- is requiered to manage the dependencies.
+If you do not have pipenv, install via: pip install pipenv or pip3 install pipenv
 
-# Python 3.7 is required. Also, -pipenv- is requiered to manage the dependencies.
-# If you do not have pipenv, install via: pip install pipenv or pip3 install pipenv
+# Installation
 
-
-
-#######
-Installation
-
-# Go to your /home directory
+**Go to your /home directory**
 
 cd /home
 
-# clone the repository
+**Clone the repository**
 
 git clone https://github.com/EliabCanul/nauyaca.git
 
-# Change to nauyaca directory
+**Change to nauyaca directory**
 
 cd nauyaca
 
-# Install the dependencies
+**Install the dependencies**
 
 pipenv install
 
-# Close the terminal
+**Close the terminal**
+
 exit
 
-#######
-In the directory of your current shell (for example .bashrc), add the path to nauyaca
+**In the directory of your current shell (for example .bashrc), add the path to nauyaca**
 
 export PYTHONPATH:/home/{mypc}/nauyaca
 
-# substitute {mypc} for your pc name
+**substitute {mypc} for your pc name**
 
-# source your shell file
+**source your shell file**
 
 source .bashrc
 
-#######
-Running the examples
+**Testing the examples**
 
-# In the nauyaca's main directory, initialize the virtual environment by typing
+**In the nauyaca's main directory (where the Pipfile file is), initialize the virtual environment by typing**
 
 pipenv shell
 
+# Usage
 
-# Enter to Documentation directory
+**In Documentation, open the .html files to see the tutorials. These tutorials have the main aim of showing the main usage of Nauyaca, although currently it's not possible to run from the Jupyter notebooks, but from Python scripts.**
 
-cd Documentation
-
-# Open the notebooks by typing
-
-jupyter notebook
-
-# Try running the examples in the documentation
-
-
+**More examples will be available soon.**
