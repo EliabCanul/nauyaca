@@ -1,6 +1,11 @@
-Python 3.7 is required. Also, -pipenv- is requiered to manage the dependencies.
+Python 3.7 is required to avoid controverse versions. Though, greater versions should work.
+
+Also, -pipenv- is requiered to manage the dependencies.
+
 If you do not have pipenv, install via: pip install pipenv or pip3 install pipenv
 
+_______________________________________________________________
+_______________________________________________________________
 # Installation
 
 **Go to your /home directory**
@@ -39,8 +44,32 @@ source .bashrc
 
 pipenv shell
 
+_______________________________________________________________
+_______________________________________________________________
 # Usage
 
-**In Documentation, open the .html files to see the tutorials. These tutorials have the main aim of showing the main usage of Nauyaca, although currently it's not possible to run from the Jupyter notebooks, but from Python scripts.**
+**In the Documentation directory there are many jupyter notebooks showing the main features in nauyaca**
+**But first, you have to install a jupyter kernel inside the virtual environment**
+
+ipython kernel install --user --name=nau
+
+**Then, open the notebooks in Documentation**
+
+cd Documentation
+
+jupyter notebook
+
+**This will display the notebooks as usual**
+**Then, inside the notebooks, change the current kernel to nau**
+
+Kernel --> Change kernel --> nau
+
+
+**Run the example. These tutorials have the main aim of showing the main usage of Nauyaca**
 
 **More examples will be available soon.**
+
+**Exit from the nauyaca environment by tiping**
+
+exit
+
