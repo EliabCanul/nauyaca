@@ -46,7 +46,7 @@ colors = {0:"red",
 
 labels = {0:r"$\mathrm{Mass}$" ,
            1:r"$\mathrm{Period}$",
-           2:r"$\mathrm{eccentricity}$",
+           2:r"$\mathrm{Eccentricity}$",
            3:r"$\mathrm{Inclination}$",
            4:r"$\mathrm{Argument\ (\omega)}$",
            5:r"$\mathrm{Mean\ anomaly}$",

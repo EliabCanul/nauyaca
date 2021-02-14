@@ -9,60 +9,121 @@ import corner
 import h5py
 import pandas as pd
 import numpy as np
-from dataclasses import dataclass
-
+from dataclasses import dataclass, field
 from .constants import colors, units_latex, labels
 
+
 __all__ = ["Plots"]
+
+__doc__ = "Built-in figures to visualize the main results from nauyaca"
 
 
 # TODO: Include functions to visualize Optimizer results
 
 @dataclass
 class Plots:
+    """A collection of customizable predefined figures.
 
+    Use this module to visualize the main results from nauyca. The functions
+    use the information from the hdf5 file (mcmc results) or from planet
+    parameters specified by user.
+
+    Parameters
+    ----------
+    PSystem : 
+        The Planetary System object
+    hdf5_file : str, optional
+        The name of the hdf5 file from which the results will be extracted, by 
+        default None. If given, specify the burnin.
+    temperature : int, optional
+        The target temperature (belonging to the ladder) that will be plotted, 
+        by default 0. Note that temperatures different from 0 are support
+        temperatures, so neither conclusion must come from them.
+    burnin : float, optional
+        A fraction between 0 and 1 to discard as burn-in at the beggining of
+        the chains, by default 0.0 (no burning). This burnin will be applied 
+        over the chains extracted from the hdf5 file.        
+    sns_context : str, optional
+        The 'context' kwarg in seaborn.set(), by default 'notebook'. It 
+        modifies the size of labels, lines and other elements of the plot. 
+        Options are: 'notebook', 'paper', 'talk', 'poster'. See seaborn doc.
+    sns_style : str, optional
+        The 'style' kwarg in seaborn.set(), by default 'darkgrid'. It changes
+        the color axes, grids, etc.
+    sns_font : float, optional
+        The 'font_scale' kwarg in seaborn.set(), by default 1. It scales the
+        font size of the axes.
+    colors : dict, optional
+        A dictionary to color lines, distributions, markers, etc. The values
+        must be integers starting from 0 up to 6 (at least), and values must be
+        the color names or hexadecimal code (eg., 'red', 'k', '#E5AC2F'). By
+        default, it is taken from nauyaca.constants.colors
+    """
 
     PSystem : None
     hdf5_file : str = None
     temperature : int = 0
     burnin : float = 0.0  
     sns_context : str = 'notebook'
-    sns_style : str = 'darkgrid'
-    #size : tuple = (10,10)  # Size debe ser kwarg de cada plot con predefinidos
-    colors = colors
+    sns_style : str = 'ticks'
+    sns_font : float = 1
+    colors : dict = field(default_factory=lambda: colors)
 
 
+    def plot_TTVs(self, flat_params=None, nsols=1, mode='random', show_obs=True, 
+                    residuals=True, size=(10,10), line_kwargs={'alpha':0.5}):
+        """Plot the TTVs from the hdf5_file class instance, or from the
+        specified flat_params.
 
-    def plot_TTVs(self, flat_params=None, mode='None', nsols=1, show_obs=True, residuals=True, size=(10,10)):
+        Parameters
+        ----------
+        flat_params : array or list
+            A flat array containing the seven planet parameters of the first planet
+            concatenated with the seven parameters of the next planet and so on. 
+            The order per planet must be: 
+            mass [Mearth], period [days], eccentricity, inclination [deg], argument
+            of periastron [deg], mean anomaly [deg] and ascending node [deg].
+            It can be a list of lists to plot many solutions. If individual
+            solutions do not include the constant parameters (for example, if
+            flat_params is loaded from a *_phys.opt file), they are added from
+            PSystem.constant_params dictionary.
+        nsols : int, optional
+            The number of solutions to take from the posteriors, by default 1.
+        mode : str, optional
+            If the class instance hdf5_file is provided, this argument indicates
+            the mode the solutions will be taken from the posteriors (after the
+            burnin phase), by default 'random'. Two modes are available:
+            * 'random': it takes random samples from the posteriors until 
+                    complete nsols.
+            * 'best': it takes the best solutions from the posteriors until
+                    coplete nsols.
+        show_obs : bool, optional
+            A flag to indicate whether data points are plotted or not, by 
+            default True.
+        residuals : bool, optional
+            A flag to indicate whether residuals are plotted in the figure or 
+            not, by default True.
+        size : tuple, optional
+            The figure size, by default (10,10)
+        line_kwargs : dict, optional
+            A dictionary to pass **kwargs for the lines, by default {'alpha':0.5}
+        """        
 
-        """Plot the observed TTVs signals and the transit solutions from flat_params
-        
-        Arguments:
-            flat_params {Array} -- A flat array containing mass, period, eccentricity,
-                inclination, argument, mean anomaly, ascending node for all planets.
-                It could be included more than one solution.
-        """
-
-        # Be aware of the constant parameters
         mins = 1440.
-        sns.set(context=self.sns_context, style=self.sns_style)
-        nplots = len(self.PSystem.TTVs) #self.PSystem.NPLA #
+        sns.set(context=self.sns_context, style=self.sns_style, font_scale=self.sns_font)
+        nplots = len(self.PSystem.TTVs)
 
-
-
-        
-        #sns.despine()
-        
         # =====================================================================
         # PREPARING DATA
         # flat_params have to:
-        #   be a list of lists!
-        #   be in physical values with all the dimensions
+        #   * be a list of lists!
+        #   * be in physical values with all the dimensions
 
         try:
             flat_params = list(flat_params)
         except:
             pass
+
 
         if flat_params != None:
             # Is a list or array
@@ -77,33 +138,13 @@ class Plots:
                 flat_params = [self._check_dimensions(fp) for fp in flat_params]
                 
             else: 
-                raise ValueError("Invalid items in flat_params. Items must be planet parameters or list of solutions")
-            """
-            if (flat_params != None) and (isinstance(flat_params[0], list)):
-                # flat_params is a list of lists
-                print("E1")
-                flat_params = []
-                
-                # Verify items are lists
-                fp_tmp = []
-                for fp in flat_params:
-                    if isinstance(fp,list):
-                        fp_tmp.append(self._check_dimensions(self.PSystem, fp))
-                    else:
-                        raise ValueError("Items in flat_params must be lists")
-                flat_params = fp_tmp
-                #pass
+                raise ValueError("Invalid items in flat_params. Items must be"+
+                                    " planet parameters or list of solutions")
 
-            elif (flat_params != None) and (isinstance(flat_params[0], list)==False):
-                # flat_params is a unique list
-                print("E2")
 
-                flat_params = self._check_dimensions(self.PSystem, flat_params)
-                flat_params = [flat_params]
-            """
         elif self.hdf5_file != None:
             # Try to build flat_params from hdf5 and the attributes of this function
-            print("E3")
+
             if mode.lower() == 'random':
                 #FIXME: There is a bug when random mode is active:
                 # Sometimes a random solution without enough data is selected,
@@ -118,10 +159,8 @@ class Plots:
                 del r 
 
                 wk_choice = np.random.randint(0,wk,nsols)
-                #print(wk_choice)
 
                 it_choice = np.random.randint(0,it,nsols)
-                #print(it_choice)
 
                 cube_params = [ chains[w,i,:] for w,i in zip(wk_choice,it_choice) ]
                 flat_params = [cube_to_physical(self.PSystem, cp) for cp in cube_params]
@@ -139,67 +178,27 @@ class Plots:
 
             else:                
                 raise SystemExit('Impossible to understand -mode- argument. '+\
-                    "Valid options are: 'random', 'best' ") # ?
+                    "Valid options are: 'random', 'best' ") 
 
-            """
-            # TODO: allow flat_params be specified by user
-            if type(flat_params) in (list, np.array):
 
-                # Check if flat_params are equal to 7*NPLA
-                # Esto debe estar en unidades fisicas
-                if len(flat_params) == 7*self.PSystem.NPLA:
-                    flat_params = list(flat_params)
-                else:
-                    for fp in flat_params:
-                        assert fp == 7 * self.PSystem.NPLA, "flat_params items "+\
-                    "must have len = 7 * number of planets."
-
-                    #assert flat_params == 7 * self.PSystem.NPLA, "flat_params items "+\
-                    #"must have len = 7 * number of planets."
-            """
         else:
             # No data to plot. Just the observed TTVs.
-            print('---> No data to plot')
+            print('---> No solutions to plot')
 
 
         # =====================================================================
-        """
-        if len(flat_params)>1:
-            ndata = 1 #1
-            flat_params = flat_params[::ndata]
-
-            # truco
-            logl =  flat_params[:,0] + abs(min(flat_params[:,0])) + 1.
-        
-            bests = flat_params[:,1:]
-            flat_params = np.array([cube_to_physical(self.PSystem, x) for x in bests] )
-            flat_params = np.array([_remove_constants(self.PSystem, x) for x in flat_params])
-            #
-            # Reversa
-            logl = logl[::-1]
-            flat_params = flat_params[::-1]
-            #
-
-            norm = matplotlib.colors.LogNorm(
-            vmin=np.min(logl),
-            vmax=np.max(logl))
-            
-            c_m = matplotlib.cm.gnuplot_r
-
-            s_m = matplotlib.cm.ScalarMappable(cmap=c_m, norm=norm)
-            s_m.set_array([])
-        """
         # BEGINS FIGURE
 
         # FIXME: There's a bug when the number of simulated transits doesn't 
         # coincide with the number of observations
         if nplots > 1:
-            fig, axes = plt.subplots(figsize=size, nrows=nplots, ncols=1, sharex=True)
+            _, axes = plt.subplots(figsize=size, nrows=nplots, ncols=1, sharex=True)
         else: 
-            fig, axes = plt.subplots(figsize=size)
+            _, axes = plt.subplots(figsize=size)
 
-        # X limits
-        l_xlim, r_xlim = self.PSystem.T0JD-1, self.PSystem.Ftime+1
+        # X limits defined from time span
+        deltat = (self.PSystem.Ftime - self.PSystem.T0JD) * 0.02
+        l_xlim, r_xlim = self.PSystem.T0JD-deltat, self.PSystem.Ftime+deltat
 
         index = 0
 
@@ -207,9 +206,7 @@ class Plots:
         for planet_id in self.PSystem.TTVs.keys(): 
 
             if hasattr(self.PSystem.planets[planet_id], "ttvs_data"):
-                # Read observed TTVs of current planet
-                #ttvs_dict = {k:self.PSystem.TTVs[planet_id][k] for k 
-                #                        in sorted(self.PSystem.TTVs[planet_id].keys())}
+
                 ttvs_dict = self.PSystem.TTVs[planet_id]
 
                 errors = np.array([[v[1]*mins, v[2]*mins] for k,v in ttvs_dict.items()]).T
@@ -226,7 +223,6 @@ class Plots:
 
                 ax.set_ylabel("O-C [min]")
 
-
                 # Plot observed TTVs
                 if show_obs:
                     ax.errorbar(y_obs, 
@@ -242,11 +238,6 @@ class Plots:
                                 label=f'{planet_id}',
                                 barsabove=False)
 
-                    #sns.scatterplot(x=y_obs, 
-                    #                y=(y_obs-model_obs.predict(x_obs))*mins, 
-                    #                marker="o", ax=ax, color=self.colors[index], 
-                    #                s=4,alpha=1. ,zorder=100000)
-
                     ax.set_xlim(l_xlim, r_xlim)
 
 
@@ -256,13 +247,14 @@ class Plots:
                     sub_ax = divider.append_axes("bottom", size="30%", pad=0.1)
                     sub_ax.axhline(0, alpha=0.3, color='k')
                     sub_ax.set_xlim(l_xlim, r_xlim)
+                    sub_ax.set_ylabel('Residuals\n[min]')
                     # Turn off xticklabels in main figure
                     ax.set_xticklabels([])
 
                 # Iterate over solutions in flat_params
                 if flat_params != None:
 
-                    for isol, solution in enumerate(flat_params):                                       
+                    for solution in flat_params:
 
                         # Perform the simulation for the current solution
                         SP = run_TTVFast(solution,  
@@ -274,20 +266,20 @@ class Plots:
                         EPOCHS = calculate_ephemeris(self.PSystem, SP)
                         
                         # Make coincide the number of observed and simulated transits
-                        epochs = {epoch[0]:EPOCHS[planet_id][epoch[0]] for epoch in x_obs }
+                        #   Does is it necessary? It's better to plot all the
+                        #   data points
+                        #epochs = {epoch[0]:EPOCHS[planet_id][epoch[0]] for epoch in x_obs }
 
                         # model
-                        x_cal, y_cal, model_calc = self._calculate_model(epochs)
+                        x_cal, y_cal, model_calc = self._calculate_model(EPOCHS[planet_id]) #epochs
                         
                         # Plot O-C
                         ax.plot(y_cal, 
                                 (y_cal-model_calc.predict(x_cal))*mins , 
                                 color= self.colors[index] ,
-                                lw=1.2, #0.5,
-                                alpha=1,
+                                **line_kwargs
                                 )
                         ax.set_xlim(l_xlim, r_xlim)
-
                         
                         # Plot residuals
                         if residuals:
@@ -316,22 +308,38 @@ class Plots:
         return 
 
 
-    def plot_hist(self,  chains=None, titles=False):
-        # TODO: Include a burnin line for chains!!!!
-        # TODO TODO TODO TODO !!!
-        """Make histograms of the every planetary parameter
-        
-        Arguments:
-            chains {array} -- An array with shape (nwalkers, niters, nparams)
-        """
+    def plot_hist(self,  chains=None, titles=False, size=None):
+        """Make histograms of the a posteriori distributions for each 
+        planetary parameter
+
+        Parameters
+        ----------
+        chains : array, optional
+            An array with shape (nwalkers, steps, ndim), by default None.
+            Elements of the array must be normalized between 0 and 1.
+            If the class attribute hdf5_file is provided, then the chains are 
+            taken from the keyword 'CHAINS' from the hdf5 file. Note that the
+            class atribute burnin is applied over the chains independently of
+            the origin (plot_hist kwarg or hdf5 file).
+        titles : bool, optional
+            A flag to specify whether medians and 1-sigma errors are plotted at
+            the top of histograms, by default False
+        size : tuple, optional
+            The figure size, by default None, in which case the sieze is 
+            automatically calculated
+        """                
+
+        if size is None:
+            size=(16,3*self.PSystem.NPLA)
         
         assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
+
         if chains is not None:
-            assert(len(chains.shape) == 3), "Shape for chains should be: (walkers,steps,dim)"+\
+            assert(len(chains.shape) == 3), "Shape for chains should be: (walkers,steps,ndim)"+\
                 f" instead of {chains.shape}"
-            nwalkers,  it, _ = chains.shape
-            burnin_ = int(self.burnin*(it) )
-            chains  = chains[:,burnin_:,:]   
+            nwalkers,  index, _ = chains.shape
+            #burnin_ = int(self.burnin*(index) )
+            #chains  = chains[:,burnin_:,:]   
 
         elif self.hdf5_file:
             assert(isinstance(self.hdf5_file, str) ), "self.hdf5_file must be a string"
@@ -342,22 +350,24 @@ class Plots:
             nwalkers = f['NWALKERS'][0]
             f.close()
 
-            burnin = int(self.burnin*index)
+            #burnin = int(self.burnin*index)
             #last_it = int(converge_time / intra_steps)
-            chains = chains[:,burnin:index+1,:]
+            #chains = chains[:,burnin:index+1,:]
         
         else:
             raise RuntimeError("No chains or hdf5 file specified")
 
-        ##
+        # burnin phase
+        burnin_ = int(self.burnin*(index) )
+        chains  = chains[:,burnin_:index+1,:]   
+        
         # Convert from  normalized to physical
         chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
-        ##
 
         # Figure
-        sns.set(context=self.sns_context,style=self.sns_style)
-        _, axes = plt.subplots(nrows=self.PSystem.NPLA, ncols=7, 
-                                figsize=(16,3*self.PSystem.NPLA))
+        sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
+
+        _, axes = plt.subplots(nrows=self.PSystem.NPLA, ncols=7, figsize=size)
 
         dim = 0
         for n in range(self.PSystem.NPLA):
@@ -407,46 +417,61 @@ class Plots:
                     dim += 1
                 
         plt.tight_layout()
-        plt.subplots_adjust(wspace=0.15, hspace=0.3)
+        plt.subplots_adjust(wspace=0.15, hspace=0.35)
         
         return
 
 
-    def plot_chains(self, chains=None, plot_means=False, thin=1):
-        """[summary]
-        
-        Keyword Arguments:
-            chains {[type]} -- [description] (default: {None})
-            hdf5_file {[type]} -- [description] (default: {None})
-            plot_means {bool} -- If True, then plot the mean of the chains at each
-                        iteration for all the dimensions (default: {True})
-        """
+    def plot_chains(self, chains=None, plot_means=False, thin=1, size=None):
+        """Plot the mcmc chains along all the dimensions
+
+        Parameters
+        ----------
+        chains : array, optional
+            An array with shape (walkers,steps,ndim), by default None. If not
+            given, then the chains are taken from the keyword 'CHAINS' from the
+            hdf5 file.
+        plot_means : bool, optional
+            A flag to plot the mean of the chains at each iteration for all the
+            dimensions, by default False
+        thin : int, optional
+            A thinning factor of the chains, by default 1. It is useful when
+            plotting many chains
+        size : tuple, optional
+            The figure size, by default None, in which case the sieze is 
+            automatically calculated
+        """                
+
+        if size is None:
+            size=(20, 8*self.PSystem.NPLA)
+
+
         xlabel = 'Iteration / intra_steps '
         if chains is not None:
             index = chains[::int(thin),:,:].shape[1] # The length of the chain
 
-        if self.hdf5_file:
+        elif self.hdf5_file:
             # Extract chains from hdf5 file
             f = h5py.File(self.hdf5_file, 'r')
             index = f['INDEX'].value[0]
-            #nwalkers = f['NWALKERS'][0]
             # shape for chains is: (temps,walkers,steps,dim)
             chains = f['CHAINS'].value[self.temperature,::int(thin),:index+1,:]
             total_walkers = chains.shape[0]
-
             intra_steps = f['INTRA_STEPS'].value[0]
             f.close()
-
 
             xlabel = f'Iteration / {intra_steps} '
             ##
             chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(total_walkers) ])
             ##
+        else:
+            raise RuntimeError("No chains or hdf5 file specified")
 
-        sns.set(context=self.sns_context,style=self.sns_style)
+        sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
+
         nrows = self.PSystem.NPLA*7 - len(self.PSystem.constant_params)
-        _, axes = plt.subplots(nrows=nrows, ncols=1, # len(self.bounds)
-                                figsize=(20, 8*self.PSystem.NPLA), sharex=True)
+        
+        _, axes = plt.subplots(nrows=nrows, ncols=1, figsize=size, sharex=True)
 
         dim = 0
         for pla in range(self.PSystem.NPLA):
@@ -455,49 +480,61 @@ class Plots:
 
                 if param_idx not in list(self.PSystem.constant_params.keys()):
 
-                    axes[dim].plot( chains[:,:,param_idx].T,   # chains[::int(thin),:,param_idx].T 
+                    axes[dim].plot( chains[:,:,param_idx].T, 
                             color=colors[param], alpha=0.1)
 
                     axes[dim].set_ylabel(labels[param]+str(pla+1)+ "\n" + 
                                                 units_latex[param], 
                                                 labelpad=10, rotation=45)
-                    #dim += 1
+
                     # Plot means
                     if plot_means:
                         means  =[np.median(chains[:,it,param_idx].T) for it in range(index)]
                         axes[dim].plot(means, c='k' ) 
                     dim += 1
-                #dim += 1
+
         axes[dim-1].set_xlabel(xlabel)
 
         return
 
 
-    def plot_corner(self, chains=None, color='#0880DE',titles=False):
-        """[summary]
-        
-        Arguments:
-            h5name {[type]} -- [description]
-        
-        Keyword Arguments:
-            burnin {float} -- A number between 0 and 1 that represents the
-                initial fraction of burnin of the total of iterations, e.g., 
-                burnin = 0.2, removes the initial 20% of the chains.
-        """
+    def plot_corner(self, chains=None, color='#0880DE',titles=False, corner_kwargs={}):
+        """A corner plot to visualize possible correlation between parameters
+
+        This function uses the corner.py package. If you use it in your research,
+        cite the propper attribution available at:
+        https://corner.readthedocs.io/en/latest/index.html
+
+        Parameters
+        ----------
+        chains : array, optional
+            An array with shape (walkers,steps,ndim), by default None. If not
+            given, then the chains are taken from the keyword 'CHAINS' from the
+            hdf5 file.
+        color : str, optional
+            A color name or hexadecimal code (eg., 'red', 'k', '#E5AC2F'), by 
+            default '#0880DE'. This is used as corner kwarg.
+        titles : bool, optional
+            A flag to put titles at top of individual distributions, by default
+            False. This is used as corner kwarg.
+        corner_kwargs : dict, optional
+            Extra kwargs for corner.corner function, by default empty dictionary,
+            in which case, a set of predefined kwargs are used.
+        """        
 
         assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
 
-        ##ndim = len(self.bounds) #npla*7
-        #colnames = self.params_names.split()
+        if chains is not None:
+            assert(len(chains.shape) == 3), "Shape for chains should be: (walkers,steps,ndim)"+\
+                f" instead of {chains.shape}"
 
-        if self.hdf5_file:
+        elif self.hdf5_file:
             f = h5py.File(self.hdf5_file, 'r')
             index = f['INDEX'].value[0]
             intra_steps = f['INTRA_STEPS'].value[0]
             converge_time = f['ITER_LAST'].value[0]
             chains = f['CHAINS'].value[:,:,:index+1,:]
             nwalkers= f['NWALKERS'].value[0]
-            #names_params = f["COL_NAMES"]
             f.close()
 
             burnin = int(self.burnin*index)
@@ -506,80 +543,67 @@ class Plots:
             chains = chains[0,:,burnin:last_it,:]
             ##
             chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
-            ##
-            
+            # remove constant params
+            chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
 
-        # FIXME PARECE QUE AQUI FALTA CONSIDERAR index PARA HACER EL BURNIN SOBRE chains
+        else:
+            raise RuntimeError("No chains or hdf5 file specified")
+            
         nwalkers = chains.shape[0]
         steps = chains.shape[1]
-        # nuevo
-        chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
         #
         chains_2D = chains.reshape(nwalkers*steps,self.PSystem.ndim) 
 
-        """
-        # Rename the columns of the data frame
-        colnames = []
-        for p in range(npla): 
-            for _,v in labels.items(): 
-                colnames.append(v+str(p+1))
-        """
-        
-        """colnames = []
-        for pla in range(self.NPLA):
-            for param in range(7):
-                param_idx = (pla*7) + param
-
-                if param_idx not in list(self.constant_params.keys()):
-                    colnames.append("\n" + labels[param]+str(pla+1) + "\n" )
-        """
-        colnames = self.PSystem.params_names.split() # nuevo
+        # Make a data frame
+        colnames = self.PSystem.params_names.split()
         df = pd.DataFrame(chains_2D, columns=colnames)
 
-        """
-        # Detect which columns have constant values and drop them
-        cols_to_drop = []
-        for (colname, coldata) in df.iteritems():
-            if np.std(coldata) < 1e-8:
-                cols_to_drop.append(colname)
 
-        if len(cols_to_drop) > 0:
-            df.drop(columns=cols_to_drop, inplace=True)
-        """
+        sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
-        sns.set(context=self.sns_context,style=self.sns_style,
-                font_scale=0.5,rc={"lines.linewidth": 0.5})
+        #
+        corner_corner_kwargs = {"quantiles": [0.16, 0.5, 0.84],
+                                "show_titles": titles,
+                                "title_kwargs": {"fontsize": 12},
+                                "title_fmt": '.3f',
+                                "label_kwargs": {"fontsize": 15, "labelpad": 25},
+                                "plot_contours": True,
+                                "plot_datapoints": True,
+                                "plot_density": True,
+                                "color": color,
+                                "smooth": True,
+                                "hist_kwargs": {'color':'k', 'rwidth':0.8}
+                                }
 
-        corner.corner(df, quantiles=[0.16, 0.5, 0.84], 
-                    show_titles=titles, 
-                    title_kwargs={"fontsize": 12}, 
-                    title_fmt='.3f',
-                    label_kwargs={"fontsize": 15, "labelpad": 20},
-                    plot_contours=True, 
-                    plot_datapoints=False, 
-                    plot_density=True, 
-                    #data_kwargs={'markersize':3,'alpha':0.005, 'lw':10} , 
-                    color = color,
-                    smooth=True,
-                    hist_kwargs={'color':'k', 'rwidth':0.8}
+        corner_corner_kwargs.update(corner_kwargs)
+
+        corner.corner(df,
+                     **corner_corner_kwargs 
                     )
 
-        #plt.gcf().set_size_inches(12,12)
         plt.subplots_adjust(
         top=0.969,
         bottom=0.061,
         left=0.056,
         right=0.954,
-        wspace=0.015,
-        hspace=0.015)
-        
+        wspace=0.,#015,
+        hspace=0.#015
+        )
         
         return
 
 
     def plot_monitor(self,size=(20,10)):
+        """Plot a monitor of the mcmc performance
 
-        sns.set(context=self.sns_context,style=self.sns_style)
+        It encompass the temperature adaptation, swap fractions, Loglikelihood
+        improvement and mean correlation time.
+
+        Parameters
+        ----------
+        size : tuple, optional
+            The figure size, by default (20,10)
+        """
 
         f = h5py.File(self.hdf5_file, 'r')
         bestlogl = f['BESTLOGL'].value
@@ -590,6 +614,8 @@ class Plots:
         conv = f['INTRA_STEPS'].value[0]
         index = f['INDEX'].value[0]
         f.close()
+
+        sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
         _, axes = plt.subplots(nrows=2, ncols=2, figsize=size, sharex=True)
 
@@ -615,8 +641,6 @@ class Plots:
         # Tau
         axes[1,1].plot(tau[:index+1])
         axes[1,1].set_ylabel("Mean autocorrelation time")
-        #x = np.linspace(0, index+1, 20)
-        #axes[1,1].plot(x, x*50/conv, '--k')
         axes[1,1].set_xlabel(f"Steps/{conv}")
 
         plt.subplots_adjust(wspace=0.15, hspace=0.05)
@@ -624,8 +648,31 @@ class Plots:
         return
 
 
-
     def plot_convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1,size=(20,10)):
+        """Plot two convergence test, namely, Gelman-Rubin and Geweke
+
+        For Gelman-Rubin (R), a valid value for convergence assessment is R < 1.01
+        For Geweke, a valid value for convergence assessment is -1 < Z-score < 1
+
+        Parameters
+        ----------
+        chains : array, optional
+            An array with shape (walkers,steps,ndim), by default None. If not
+            given, then the chains are taken from the keyword 'CHAINS' from the
+            hdf5 file.
+        names : list, optional
+            A list with param names that should correspond to ndim, by default 
+            None, in which case the names are taken form the current PSystem.
+        nchunks_gr : int, optional
+            Number of chunks to divide the chain steps in the Gelman-Rubin test,
+            by default 10.
+        thinning : int, optional
+            A thining factor of the chains, by default 1. Useful with larger 
+            chains
+        size : tuple, optional
+            The figure size, by default (20,10)
+
+        """
 
         assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
 
@@ -649,7 +696,7 @@ class Plots:
         
         print("-- ", chains.shape)
 
-        
+        sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)        
         _, axes = plt.subplots(nrows=2, ncols=1, figsize=size)
         symbols = {1:"o",2:"^",3:"x",4:"s",5:"P"}
         
@@ -674,7 +721,7 @@ class Plots:
         axes[0].axhline( 1, color='k', alpha = 0.5, ls='--')
         axes[0].set_xlabel("Start iteration", fontsize=15)
         axes[0].set_ylabel(r'$\hat{R}$', fontsize=15)
-        axes[0].legend(loc='upper left', fontsize=8) #bbox_to_anchor=(1.04,1), loc="bottom left")
+        axes[0].legend(loc='upper left', fontsize=8)
         axes[0].grid(alpha=0.1)    
             
         # Geweke test
@@ -701,15 +748,13 @@ class Plots:
         
         plt.subplots_adjust(hspace=0.2)
         
-        return {"GR": GR, "Z": Z}
-
-
-
-
+        return
 
 
     @staticmethod
     def _calculate_model(ttvs_dict):
+        """A help function to calculate coefficients of the linear regression
+        in the TTVs"""
         X, Y = [], []
         for k, v in ttvs_dict.items():
             X.append(k)
@@ -725,22 +770,22 @@ class Plots:
 
 
     def _check_dimensions(self, fp):
-        # Verify that solution contains ALL the required parameters
-        # to make the simulation. If don't, complete the fields
-        # with the constant parameters. fp must be list.
+        """A hel function to verify that solution contains ALL the required 
+        parameters to make the simulation. If don't, complete the fieldswith the 
+        constant parameters. fp must be list. This is used in plot_TTVs function"""
+
         if len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)!=0:
             # there are the correct number of dimensions, but should be more?
-            print("1")
+            
             raise ValueError('Invalid values in flat_params. Pass just planetary parameters')
             
         elif len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)==0:
             # dimensions are correct
-            print("2")
+            
             return fp
         else:
-            print("3")
+            
             # insert constant params
             for k, v in self.PSystem.constant_params.items(): 
                 fp.insert(k, v)
             return fp
-

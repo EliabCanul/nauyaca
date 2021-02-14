@@ -10,7 +10,7 @@ __all__ = ['run_TTVFast', 'calculate_epochs', 'log_likelihood_func',
             'get_mcmc_results', 'geweke', 'gelman_rubin',  
             'cube_to_physical', 'calculate_ephemeris', '_remove_constants']
 
-__doc__ = f"Miscelaneous functions to support themain modules. Available are: {__all__}"
+__doc__ = f"Miscelaneous functions to support the main modules. Available are: {__all__}"
 
 
 def run_TTVFast(flat_params, mstar, init_time=0., final_time=None, dt=None):
@@ -417,7 +417,7 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
         opt_data = np.column_stack((fun, x))
 
     # TODO: It is necessary to give the input in 'cube' format? or it can be 'phys' either?
-    assert((opt_data[:,1:]>0.).all() and (opt_data[:,1:] < 1.0).all()), "Invalid opt_data. Provide 'cube' solutions"
+    assert((opt_data[:,1:]>=0.).all() and (opt_data[:,1:] <=1.0).all()), "Invalid opt_data. Provide 'cube' solutions"
 
     # Clean and sort results. Get just data inside fbest.
     # FIXME: There is a bug when opt_data is given from file. It must be
