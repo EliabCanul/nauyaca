@@ -149,7 +149,7 @@ class Plots:
                 #FIXME: There is a bug when random mode is active:
                 # Sometimes a random solution without enough data is selected,
                 # Producing KeyError
-                print("random")
+                print("mode: random")
 
                 r = get_mcmc_results(self.hdf5_file, keywords=['INDEX','CHAINS'])
                 index = int(r['INDEX'][0])
@@ -167,7 +167,7 @@ class Plots:
 
 
             elif mode.lower() == 'best':
-                print('best')
+                print('mode: best')
                 # best_solutions comes from better to worse
                 best_solutions = extract_best_solutions(self.hdf5_file, 
                                                         write_file=False)
@@ -693,8 +693,6 @@ class Plots:
 
         else:
             raise RuntimeError("No chains or hdf5 file specified")
-        
-        print("-- ", chains.shape)
 
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)        
         _, axes = plt.subplots(nrows=2, ncols=1, figsize=size)

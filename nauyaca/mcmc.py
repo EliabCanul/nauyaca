@@ -104,11 +104,15 @@ class MCMC:
         if self.p0 is not None:
             pass
 
-        elif type(None) not in ( type(self.opt_data), type(self.ntemps), 
-                                        type(self.nwalkers), type(self.fbest)):
+        elif type(None) not in ( type(self.opt_data), type(self.ntemps), type(self.nwalkers), type(self.fbest)):
+            # distributions using opt_data
             self.p0 = init_walkers(self.PSystem,distribution=self.distribution,
                                     opt_data=self.opt_data, ntemps=self.ntemps,
                                     nwalkers=self.nwalkers,fbest=self.fbest)
+        elif type(None) not in ( type(self.ntemps), type(self.nwalkers) ):
+            # Uniform distribution maybe?
+            self.p0 = init_walkers(self.PSystem,distribution=self.distribution,
+                                    ntemps=self.ntemps, nwalkers=self.nwalkers)
         else:
             raise NameError("No 'p0' have been encountered. Provide 'p0' or " +
                             "define: 'opt_data', 'fbest', 'ntemps', " +

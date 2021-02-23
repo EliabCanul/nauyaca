@@ -38,16 +38,6 @@ class SetPlanet:
 
 
     def __init__(self, planet_id):
-            # Default boundaries are specified by physical_bounds
-            #mass  = physical_bounds["mass"],
-            #period  = physical_bounds["period"],
-            #ecc  = physical_bounds["ecc"] ,
-            #inclination = physical_bounds["inclination"],
-            #argument  = physical_bounds["argument"],
-            #mean_anomaly  = physical_bounds["mean_anomaly"] ,
-            #ascending_node  = physical_bounds["ascending_node"],
-            ##_boundaries_parameterized = None,
-            ##ttvs_data = None
         """
         Parameters
         ----------
@@ -55,6 +45,7 @@ class SetPlanet:
             The Planet name
         """
 
+        # Default boundaries are specified by physical_bounds
         # Initialize default boundaries
         self.planet_id = planet_id
         self.mass = physical_bounds["mass"]  # mass

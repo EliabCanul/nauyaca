@@ -165,6 +165,9 @@ def calculate_epochs(PSystem, flat_params):
 def _chi2(observed, sigma, simulated):
     """A help function to calculate chi square of all planets"""
 
+    # Comparar tamaños de vectores para evitar el try & except
+    # Rellenar con last_valid_epoch hasta el ultimo dato del vector
+
     chi2 = 0.0
     for planet_id, obs in observed.items():
            
