@@ -271,11 +271,11 @@ class Plots:
                         #epochs = {epoch[0]:EPOCHS[planet_id][epoch[0]] for epoch in x_obs }
 
                         # model
-                        x_cal, y_cal, model_calc = self._calculate_model(EPOCHS[planet_id]) #epochs
+                        x_cal, y_cal, model_obs = self._calculate_model(EPOCHS[planet_id]) #epochs
                         
                         # Plot O-C
                         ax.plot(y_cal, 
-                                (y_cal-model_calc.predict(x_cal))*mins , 
+                                (y_cal-model_obs.predict(x_cal))*mins , 
                                 color= self.colors[index] ,
                                 **line_kwargs
                                 )
@@ -285,7 +285,7 @@ class Plots:
                         if residuals:
                             #
                             residual_obs = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins  for x,y in zip(list(x_obs.flatten()), list(y_obs))}
-                            residual_cal = {x:(y-model_calc.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
+                            residual_cal = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
 
                             residuals = [residual_obs[r]-residual_cal[r] for r in sorted(ttvs_dict.keys())]
                             
