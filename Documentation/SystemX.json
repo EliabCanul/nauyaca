@@ -2,8 +2,9 @@
     "system_name": "SystemX",
     "mstar": 0.9132,
     "rstar": 0.8632,
-    "Ftime": 200,
-    "dt": 0.15,
+    "t0": 0.0,
+    "ftime": 198,
+    "dt": 0.17,
     "planets": {
         "Planet-b": {
             "planet_id": "Planet-b",
@@ -20,8 +21,8 @@
                 0.2
             ],
             "inclination": [
-                85,
-                95
+                90,
+                90
             ],
             "argument": [
                 0.0,
@@ -49,8 +50,8 @@
                     0.2
                 ],
                 [
-                    85,
-                    95
+                    90,
+                    90
                 ],
                 [
                     0.0,
@@ -268,8 +269,8 @@
                 0.2
             ],
             "inclination": [
-                85,
-                95
+                90,
+                90
             ],
             "argument": [
                 0.0,
@@ -297,8 +298,8 @@
                     0.2
                 ],
                 [
-                    85,
-                    95
+                    90,
+                    90
                 ],
                 [
                     0.0,
@@ -416,10 +417,6 @@
             0.2
         ],
         [
-            85,
-            95
-        ],
-        [
             0.0,
             360
         ],
@@ -438,10 +435,6 @@
         [
             1e-06,
             0.2
-        ],
-        [
-            85,
-            95
         ],
         [
             0.0,
@@ -470,10 +463,6 @@
             0.2
         ],
         [
-            85,
-            95
-        ],
-        [
             0.0,
             720
         ],
@@ -492,10 +481,6 @@
         [
             1e-06,
             0.2
-        ],
-        [
-            85,
-            95
         ],
         [
             0.0,
@@ -1066,22 +1051,16 @@
             ]
         }
     },
-    "NPLA": 2,
+    "npla": 2,
     "constant_params": {
-        "6": 88.36
+        "3": 90.0,
+        "6": 88.36,
+        "10": 90.0
     },
     "params_names_all": "mass1  period1  ecc1  inclination1  argument1  mean_anomaly1  ascending_node1  mass2  period2  ecc2  inclination2  argument2  mean_anomaly2  ascending_node2",
-    "params_names": "mass1  period1  ecc1  inclination1  argument1  mean_anomaly1  mass2  period2  ecc2  inclination2  argument2  mean_anomaly2  ascending_node2",
-    "ndim": 13,
+    "params_names": "mass1  period1  ecc1  argument1  mean_anomaly1  mass2  period2  ecc2  argument2  mean_anomaly2  ascending_node2",
+    "ndim": 11,
     "hypercube": [
-        [
-            0.0,
-            1.0
-        ],
-        [
-            0.0,
-            1.0
-        ],
         [
             0.0,
             1.0
@@ -1131,13 +1110,11 @@
         1,
         5.35,
         1e-06,
-        85,
         0.0,
         -360.0,
         1,
         11.83,
         1e-06,
-        85,
         0.0,
         -360.0,
         0.0
@@ -1146,13 +1123,11 @@
         20.0,
         5.36,
         0.2,
-        95,
         720,
         360.0,
         50,
         11.84,
         0.2,
-        95,
         720,
         360.0,
         180.0
@@ -1281,6 +1256,9 @@
         "Planet-b": -275.8791584959128,
         "Planet-c": -133.63117784743974
     },
-    "T0JD": 0.0,
-    "rstarAU": 0.004014283339662534
+    "rstarAU": 0.004014283339662534,
+    "valid_t0": [
+        -3.412334000000005,
+        1.941979
+    ]
 }
