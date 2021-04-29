@@ -1,4 +1,10 @@
 *.png
+*.jpg
 *.hdf5
+*.json
+*.pkl
+*.opt
+*.best
 *.env
 *checkpoints
+__pycache__
