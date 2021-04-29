@@ -3,11 +3,12 @@ import datetime
 import numpy as np
 from dataclasses import dataclass
 from multiprocessing import Pool
-from .utils import * # Miztli: from NAU.utils import *
-from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants # Miztli: from NAU.utils import writefile, intervals
+from .utils import * 
+from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants 
 import h5py
 import ptemcee as pt
 from contextlib import closing
+import os
 
 
 __doc__ = "A module to perform MCMC runs using the Parallel-tempering algorithm"
@@ -52,7 +53,7 @@ class MCMC:
         Number of maximum iterations performed in the MCMC, by default 100.
     intra_steps : int
         Number of internal steps for saving the state of the chains, by
-        default 1.
+        default 1. It is an alias for 'thinning' the chains. 
     tmax : float, optional
         Maximum temperature value in the temperature ladder. By default it is
         calculated from ptemcee.
@@ -74,7 +75,6 @@ class MCMC:
         output especified by intra_steps, by default True.
     """
 
-
     PSystem : None
     p0 : list = None 
     ntemps : int = None
@@ -82,7 +82,7 @@ class MCMC:
     opt_data : list = None
     fbest : float = 1.0
     distribution : str = ''
-    itmax : int = 100 # run_time ??
+    itmax : int = 100 
     intra_steps : int = 1
     tmax : float = None
     betas : list = None
@@ -139,6 +139,12 @@ class MCMC:
                 raise RuntimeError(f"Number of 'betas' ({self.betas}) differs"+
                 f" from number of temperatures in 'p0' ({self.ntemps})")
 
+        # Verify path exists
+        if os.path.exists(self.path):
+            pass
+        else:
+            raise RuntimeError(f"directory -path- {self.path} does not exist")
+
         # hdf5 file name to save mcmc data
         if self.file_name is not None:
             self.hdf5_filename =  f"{self.path}{self.file_name}{self.suffix}.hdf5"   
@@ -151,7 +157,7 @@ class MCMC:
         now = datetime.datetime.now()
         print("\n =========== PARALLEL-TEMPERING MCMC ===========\n")
         print("--> Starting date: ", now.strftime("%Y-%m-%d %H:%M"))
-        print("--> Reference epoch of the solutions: ", self.PSystem.T0JD, " [JD]")
+        print("--> Reference epoch of the solutions: ", self.PSystem.t0, " [JD]")
         print('--> Results will be saved at: ', self.hdf5_filename)
         print("--> MCMC parameters:")
         print(f"      -ntemps: {self.ntemps}")
@@ -209,7 +215,7 @@ class MCMC:
                 # get_autocorr_time, returns a matrix of autocorrelation 
                 # lengths for each parameter in each temperature of shape 
                 # ``(Ntemps, ndim)``.
-                tau = sampler.get_autocorr_time()
+                tau = sampler.get_autocorr_time()[0] # Take only colder temp
                 mean_tau = np.mean(tau)
                 # tswap_acceptance_fraction, returns an array of accepted 
                 # temperature swap fractions for each temperature; 
@@ -235,12 +241,10 @@ class MCMC:
                     print(" Mean tau:", round(mean_tau, 3))
                     print(" Accepted swap fraction in Temp 0: ", round(swap[0],3))
                     print(" Mean acceptance fraction Temp 0: ", round(np.mean(acc0),3))
-                    #print(" Mean posterior: ", round(current_meanposterior, 6))
                     print(" Mean likelihood: ", round(current_meanlogl, 6))
                     print(" Maximum likelihood: ", max_index,  round(max_value,6))
                     print(" Current mean likelihood dispersion: ", round(std_meanlogl, 6))
                     autocorr[index] = mean_tau
-
                 
                 # Save data in hdf5 File
                     
@@ -260,7 +264,7 @@ class MCMC:
 
                 """
                                 CONVERGENCE CRITERIA
-                Here you can write your favorite convergence criteria 
+                Write here your favorite convergence criteria 
                 """
                 ##geweke()
 
@@ -276,14 +280,13 @@ class MCMC:
         # Extract best solutions from hdf5 file and write it in ascci
         extract_best_solutions(self.hdf5_filename, write_file=True)
 
-        print("--> Reference epoch of the solutions: ", self.PSystem.T0JD, " [JD]")
+        print("--> Reference epoch of the solutions: ", self.PSystem.t0, " [JD]")
         print('--> Iterations performed: ', iteration +1)
         print('--> Elapsed time in MCMC:', round((time.time() - ti)/60.,4), 
                     'minutes')
 
         return sampler
     
-
 
     def _set_hdf5(self, PSystem, hdf5_filename):
         """Generates an hdf5 file and set fields
@@ -313,15 +316,13 @@ class MCMC:
                         compression_opts=4)
             NCD('BETAS',(nsteps, self.ntemps), dtype='f8', compression="gzip", 
                         compression_opts=4)
-            ##NCD('TAU_PROM0', (nsteps,), dtype='f8', compression="gzip", 
-            ##            compression_opts=4)
             NCD('ACC_FRAC0', (nsteps,self.ntemps), dtype='f8', 
                         compression="gzip", compression_opts=4)
             NCD('INDEX', (1,), dtype='i8')
             NCD('ITER_LAST', (1,), dtype='i8')
 
             # Save the best solution per iteration
-            NCD('BESTSOLS', (nsteps, PSystem.ndim,), dtype='f8',  # PSystem.NPLA*7,
+            NCD('BESTSOLS', (nsteps, PSystem.ndim,), dtype='f8',  
                         compression="gzip", compression_opts=4)
             NCD('BESTLOGL', (nsteps,), dtype='f8', 
                         compression="gzip", compression_opts=4)
@@ -342,18 +343,17 @@ class MCMC:
             NCD('CORES', (1,), dtype='i8')[:] = self.cores
             NCD('ITMAX', (1,), dtype='i8')[:] = self.itmax
             NCD('INTRA_STEPS', (1,), dtype='i8')[:] = self.intra_steps
-            NCD('REF_EPOCH', (1,), dtype='i8')[:] = PSystem.T0JD
+            NCD('REF_EPOCH', (1,), dtype='i8')[:] = PSystem.t0
 
             # COL_NAMES are the identifiers of each dimension
             newfile['COL_NAMES'] = PSystem.params_names
             
             # Parameters of the simulated system
-            NCD('NPLA', (1,), dtype='i8')[:] = PSystem.NPLA
+            NCD('NPLA', (1,), dtype='i8')[:] = PSystem.npla
             NCD('MSTAR', (1,), dtype='f8')[:] = PSystem.mstar
             NCD('RSTAR', (1,), dtype='f8')[:] = PSystem.rstar
         
         return
-
 
 
     @staticmethod
@@ -368,7 +368,6 @@ class MCMC:
             file['BETAS'][index,:] = sampler_betas
             file['AUTOCORR'][:] = autocorr
             file['INDEX'][:] = index
-            ##file['TAU_PROM0'][index] = tau_mean #repetido con autocorr
             file['ACC_FRAC0'][index,:] = swap
             file['ITER_LAST'][:] = iteration + 1
             # Best set of parameters in the current iteration
@@ -379,7 +378,6 @@ class MCMC:
         print(f' Saving time: {(time.time() - ta) :.5f} sec')
 
         return
-
 
 
     @classmethod

@@ -17,10 +17,7 @@ class SetPlanet:
 
     Planet object contains the main information of individual planets
     that will be part of a Planetary System object.
-    Each Planet has many properties: 
-    - planet_id (requiered)
-    - boundaries for: mass, period, ...,
-    - ttvs_data 
+
     """
 
     
@@ -50,9 +47,9 @@ class SetPlanet:
         self.planet_id = planet_id
         self.mass = physical_bounds["mass"]  # mass
         self.period = physical_bounds["period"] # period
-        self.ecc = physical_bounds["ecc"] # ecc
+        self.ecc = physical_bounds["ecc"] # eccentricity
         self.inclination = physical_bounds["inclination"] # inclination
-        self.argument = physical_bounds["argument"] # argument
+        self.argument = physical_bounds["argument"] # argument of periastron
         self.mean_anomaly = physical_bounds["mean_anomaly"] # mean_anomaly
         self.ascending_node = physical_bounds["ascending_node"] # ascending_node
         #self._boundaries_parameterized = _boundaries_parameterized
@@ -86,8 +83,9 @@ class SetPlanet:
             )
 
         # Parameterized boundaries. Substitute argument (w) and mean anomaly (M)
-        # for parameterized angles x=w+M and y=w-M
-        # _boundaries_parameterized follows the same order as in col_names
+        # for parameterized angles x=w+M and y=w-M.
+        # It is done to deal with the periodic boundaries of these angles.
+        # _boundaries_parameterized follows the same order as in col_names.
         self._boundaries_parameterized = (
             bounds[0],
             bounds[1],
@@ -107,7 +105,8 @@ class SetPlanet:
         The format of the input file must be:
         EPOCH  TIME  TIME_LOWER_ERR  TIME_UPPER_ERR
 
-        where times must be in days.
+        where epoch must be a integer and times must be in days. Epoch 0 must be
+        referenced to a reference time t0.
 
         Parameters
         ----------
@@ -135,10 +134,10 @@ class SetPlanet:
 
         # Verify entry data are correct
         for ep, times in ttvs_data.items():
-
+            # Verify uncertainties are not 0
             if 0 in [times[1], times[2]]:
                 self.ttvs_data = None
-                exit_status = "Invalid error values in epoch " + str(ep)+ \
+                exit_status = "Invalid uncertainties in epoch " + str(ep)+ \
                 " found in file: " + str(ttvs_file)
                 sys.exit(exit_status)
                 
@@ -201,3 +200,4 @@ class SetPlanet:
         else:
             summary.append("  TTVs: False")
         return "\n".join(summary)
+        

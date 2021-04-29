@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from collections import OrderedDict
-from .constants import col_names, units, Msun_to_Mearth, Rsun_to_AU
+from .constants import col_names, units, Msun_to_Mearth, Rsun_to_AU, k_limit
 import numpy as np
 import pickle
 import json
 import copy
+import sys
 
 
 __doc__ = "A module to create Planetary System objects over which simulations will be performed"
@@ -16,21 +17,19 @@ __all__ = ["PlanetarySystem"]
 # in order to avoid boiler plate code
 #@dataclass
 class PlanetarySystem:  
-    """A Planetary System object formed by star and planets
+    """A Planetary System object formed by a star and planets
     
-    A Planetary System object is created when the stellar properties are set.
+    A Planetary System object is created when the stellar properties are given
+    and Planets are added.
 
-    Inputs:
-    Name of the planetary system
-    Stellar mass [Msun]
-    Stellar radius [Rsun]
     """
 
     # All instances of the class
     __slots__ = ('system_name',
                     'mstar',
                     'rstar',
-                    'Ftime',
+                    't0',
+                    'ftime',
                     'dt',
                     'planets',
                     'bounds',
@@ -38,7 +37,7 @@ class PlanetarySystem:
                     'planets_IDs',
                     'TTVs',
                     '_TTVs_original',
-                    'NPLA',
+                    'npla',
                     'constant_params',
                     'params_names_all',
                     'params_names',
@@ -49,8 +48,8 @@ class PlanetarySystem:
                     'transit_times',
                     'sigma_obs',
                     'second_term_logL',
-                    'T0JD',
                     'rstarAU',
+                    'valid_t0'
                     )
 
     def __init__(self, system_name,mstar,rstar):
@@ -85,7 +84,7 @@ class PlanetarySystem:
         self._bounds_parameterized = []
         self.planets_IDs = {}  # OrderedDict?
         self._TTVs_original = {} 
-        self.NPLA = 0 
+        self.npla = 0 
 
         for new_planet in new_planets:
             # Dictionary with Planet objects
@@ -101,13 +100,13 @@ class PlanetarySystem:
             self._bounds_parameterized.extend(new_planet._boundaries_parameterized)
 
             # Dictionary that saves the entry order
-            self.planets_IDs[new_planet.planet_id] = self.NPLA
+            self.planets_IDs[new_planet.planet_id] = self.npla
 
             # Check for ttvs in planet object and append to TTVs dictionary
             if hasattr(new_planet, "ttvs_data") and type(new_planet.ttvs_data) == dict: 
                 self._TTVs_original[new_planet.planet_id] = new_planet.ttvs_data.copy()
             
-            self.NPLA += 1
+            self.npla += 1
 
         # Calculate necessary attributes of Planetary System objects
         # from Planets objects added above.
@@ -120,9 +119,9 @@ class PlanetarySystem:
         
         assert len(self._TTVs_original) > 0, "No Transit times have been provided for any "\
             "planet. Use .load_ttvs() method to load an ASCII file or use the "\
-            ".ttvs_data attribute in Planet object to load an dictionary with "\
+            ".ttvs_data attribute in the Planet object to load an dictionary with "\
             "transit ephemerids in format: "\
-            "\n{epoch0: [time0, lower_e0, upper_e0],epoch1: [time1, lower_e1, upper_e1]}"
+            "\n{epoch0: [time0, lower_e0, upper_e0], epoch1: [time1, lower_e1, upper_e1], ...}"
 
         # Attributes of parameter space
         self._manage_boundaries()
@@ -155,7 +154,7 @@ class PlanetarySystem:
  
         # Create a string with parameter names
         params_names = []
-        for i in range(1, self.NPLA+1):
+        for i in range(1, self.npla+1):
             for c in col_names:
                 params_names.append(c+f"{i}")
         self.params_names_all = "  ".join(params_names)
@@ -171,18 +170,18 @@ class PlanetarySystem:
         return
 
 
-    def simulation(self, T0JD=None, Ftime=None, dt=None):
+    def simulation(self, t0=None, ftime=None, dt=None):
         """A function to set the simulation features
 
         Parameters
         ----------
-        T0JD : float, optional
+        t0 : float, optional
             Time of reference for the simulation results (days), 
-            by default None, in which case, T0JD is calculated by rounding 
+            by default None, in which case, t0 is calculated by rounding 
             down the smallest transit time in Planet ephemeris.
-        Ftime : float, optional
+        ftime : float, optional
             The final time of the simulations (days), by default None, 
-            in which case, Ftime is calculated by rounding up the maximum 
+            in which case, ftime is calculated by rounding up the maximum 
             transit time in the Planet ephemeris.
         dt : float, optional
             The timestep of the simulations (days), by default None, 
@@ -200,15 +199,17 @@ class PlanetarySystem:
         # Converted to lists to be json serializable
         self.bi, self.bf = list(map(list, zip(*self._bounds_parameterized)))
 
-        # Adapt TTVs to T0JD and Ftime specifications. Make a copy
+        # Adapt TTVs to t0 and ftime specifications. Make a copy
         self.TTVs = copy.deepcopy(self._TTVs_original)
 
-        
         # Calculates constants to manage the reference time
         first_transits = []
+        first_transit_epochs = []
         estimated_periods = []
+        first_line = []
         for k in self.TTVs.keys():
             first_epoch = list(sorted(self.TTVs[k]))[0]
+            first_transit_epochs.append(first_epoch)
             first_transits.append( (k, self.TTVs[k][first_epoch][0]) )
 
             TT = [x[0] for x in list(self.TTVs[k].values())]
@@ -218,10 +219,35 @@ class PlanetarySystem:
                 tmp_periods.append((TT[t+1]-TT[t]))
             estimated_periods.append(min(tmp_periods))
 
+            # A tuple of data to calculate min_t0
+            first_line.append((first_epoch, self.TTVs[k][first_epoch][0], min(tmp_periods)))
+
         # Detect the smaller central time of the first planet in transit 
         first_central_time = min(first_transits, key = lambda t: t[1])[1]
-        # Estimate the lower possible value for T0JD
-        min_t0 = first_central_time - min(estimated_periods)
+
+        # IMPORTANT:
+        # Verify that there is at least one epoch labeled with 0!
+        # Otherwise it is impossible to set attributes for simulations
+        # since TTVFast returns epochs starting with 0 and it will be
+        # impossible to calculate O-C properly.
+        if 0 in first_transit_epochs:
+            pass
+        else:
+            exit_status = "TTVs ephemeris do not have at least one transit epoch "+\
+                "labeled with 0. Relabel the ephemeris transit epochs to match " +\
+                "the first transit with epoch 0. The first transit must occur "+\
+                "after t0. See documentation for details."
+            sys.exit(exit_status)
+
+        # Estimate the lower possible value for t0
+        ficticional_transit = [] # It would correspond to transit epoch -1
+        for epi, tti, peri in first_line:
+            while epi>-1:
+                epi -= 1
+                tti -= peri
+            ficticional_transit.append(tti)
+
+        min_t0 = max(ficticional_transit) 
         
         # Manage timestep
         if dt == None:
@@ -233,46 +259,41 @@ class PlanetarySystem:
         else:
             raise ValueError("Invalid timestep -dt-")
         
-        # Detect which is the time of the first transit and round it down.
-        #if self.system_name.startswith('syn'):
-        #    # FIXME: Parche hecho para que T0JD sea 0 para los sintéticos y min para
-        #    # los sistemas reales            
-        #    self.T0JD = 0.
-        if isinstance(T0JD, (int, float)):
-            self.T0JD = T0JD
+        # Stablish t0
+        if isinstance(t0, (int, float)):
+            self.t0 = t0
         else:
-            self.T0JD =  ( min(first_transits, key = lambda t: t[1])[1] ) // 1
+            # Detect which is the time of the first transit and round it down.
+            self.t0 =  ( min(first_transits, key = lambda t: t[1])[1] ) // 1
 
-        # Detect if the proposed reference time is valid
-        if min_t0 < self.T0JD < first_central_time:
+        # Detect if the proposed reference time t0 is valid
+        self.valid_t0 = (min_t0, first_central_time)
+        if min_t0 < self.t0 < first_central_time:
             pass
-
         else:
-            raise ValueError(f"-T0JD- must be lower than the first transit " +\
-                f"time: {first_central_time}, but greater than {min_t0} to " +\
-                "avoid spurious results")
+            raise ValueError(f"-t0- must be greater than {min_t0} and " +\
+                f"lower than the first transit time {first_central_time}, " +\
+                "to avoid spurious results. ")
 
-
-        # Set Ftime: total time of TTVs simulations [days]
-        if Ftime == None: #str(Ftime).lower() == 'default':
+        # Set ftime: total time of TTVs simulations [days]
+        if ftime == None: 
             # Takes the maximum central time in TTVs and round it up to the next integer
-            self.Ftime = np.ceil(max([ list(self.TTVs[i].values())[-1][0] for i in \
+            self.ftime = np.ceil(max([ list(self.TTVs[i].values())[-1][0] for i in \
                         self.TTVs.keys() ]) )
 
-        elif isinstance(Ftime, (int, float)):
-            #self.Ftime = self.Ftime
-            self.Ftime = Ftime
+        elif isinstance(ftime, (int, float)):
+            self.ftime = ftime
 
         else:
-            #print(self.Ftime)
-            print(Ftime)
-            raise ValueError("-Ftime- must be int, float or option \"Default\" ")
+            print(ftime)
+            raise ValueError("-ftime- must be int, float or None. "+
+            "In the last case (None), ftime is automatically chosen.  ")
 
 
-        # Discard TTVs outside the specified Ftime
+        # Discard TTVs outside the specified ftime
         TTVs_copy = copy.deepcopy(self.TTVs)
         [[TTVs_copy[j].pop(i) for i in list(self.TTVs[j].keys()) \
-            if self.TTVs[j][i][0]>self.Ftime] for j in list(self.TTVs.keys()) ]
+            if self.TTVs[j][i][0]>self.ftime] for j in list(self.TTVs.keys()) ]
         self.TTVs = TTVs_copy
         del TTVs_copy
 
@@ -300,13 +321,12 @@ class PlanetarySystem:
 
     def _check_mass_limits(self, Planet):
         """A help function to check for upper limits in mass. Maximum planet
-        mass must be, at most, 1% (k_limit) of the stellar mass.
+        mass must be, at most, -k_limit- of the stellar mass. k_limit is
+        specified in constants.
         """
         
-        #! upper_mass_limit = Planet.boundaries[0][1]
         upper_mass_limit = Planet.mass[1]    
-        # Percentage of stellar mass to set as upper mass limit
-        k_limit = 0.01 
+
         k_mass_frac = (k_limit * self.mstar) * Msun_to_Mearth
 
         if upper_mass_limit > k_mass_frac:
@@ -319,7 +339,7 @@ class PlanetarySystem:
 
         return
 
-    # ========== Saving ==========
+
     @property
     def save_pickle(self):
         """Save the Planetary System object using pickle"""
@@ -419,8 +439,7 @@ class PlanetarySystem:
         new_PS = PlanetarySystem(system_name=json_load['system_name'],
                                 rstar=json_load['rstar'],
                                 mstar=json_load['mstar'])
-                                #Ftime=json_load['Ftime'],
-                                #dt=json_load['dt'])    
+ 
         
         # Add Planet instances to list
         planet_list = []
@@ -449,8 +468,8 @@ class PlanetarySystem:
 
         # Restart the simulation attributes.
         # If more attributes exist, include them here!
-        new_PS.simulation(T0JD=json_load['T0JD'],
-                          Ftime=json_load['Ftime'],
+        new_PS.simulation(t0=json_load['t0'],
+                          ftime=json_load['ftime'],
                           dt=json_load['dt'])
 
         return new_PS       
@@ -468,9 +487,9 @@ class PlanetarySystem:
         print("\n =========== Planetary System Summary =========== ")
         summary = [f"\nSystem: {self.system_name}"]
         summary.append(f"Mstar: {self.mstar} Msun |  Rstar: {self.rstar} Rsun")
-        if hasattr(self, 'NPLA'):
-        #if self.NPLA > 0:
-            summary.append(f"Number of planets: {self.NPLA}")
+        if hasattr(self, 'npla'):
+        #if self.npla > 0:
+            summary.append(f"Number of planets: {self.npla}")
             summary.append(f"Planet information:")
             for k, v in self.planets.items():
                 number = self.planets_IDs[v.planet_id] + 1
@@ -484,8 +503,8 @@ class PlanetarySystem:
                     summary.append("  TTVs: False")
             summary.append("\nSimulation attributes: ")
             ##summary.append(f"\nFirst planet (ID) in transit: {self.first_planet_transit}")
-            summary.append(f"Reference epoch of the solutions (T0JD): {self.T0JD} [JD]")
-            summary.append(f"Total time of TTVs data (Ftime): {self.Ftime} [days]")
+            summary.append(f"Reference epoch of the solutions (t0): {self.t0} [JD]")
+            summary.append(f"Total time of TTVs data (ftime): {self.ftime} [days]")
             ##summary.append(f"Time span of TTVs simulations: {self.time_span}")
             summary.append(f"Timestep of the simulations (dt): {self.dt} [days]")
 

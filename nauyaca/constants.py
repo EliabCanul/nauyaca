@@ -2,19 +2,6 @@
 
 __doc__ = "A file for defining constants used in Nauyaca"
 
-# var_names
-col_names = (
-			"mass", 
-			"period", 
-			"ecc", 
-			"inclination", 
-			"argument", 
-			"mean_anomaly",
-            "ascending_node"
-            )
-			
-units = ("[M_earth]", "[d]", " ", "[deg]", "[deg]", "[deg]", "[deg]")
-
 
 # Predefined boundaries. Change these physical bounds with responsibility 
 # and physical sense.
@@ -28,13 +15,10 @@ physical_bounds = {
     'ascending_node': (0.0, 360.0)  # deg 
     }
 
-Mearth_to_Msun = 3.0034893488507934e-06
+# Units of the parameters. It is used in the outputs
+units = ("[M_earth]", "[d]", " ", "[deg]", "[deg]", "[deg]", "[deg]")
 
-Msun_to_Mearth = 332946.07832806994
-
-Rsun_to_AU = 0.004650467260962157
-
-
+# Default colors for plots
 colors = {0:"red", 
           1:"olive", 
           2:"skyblue", 
@@ -43,12 +27,11 @@ colors = {0:"red",
           5:"orange", 
           6:"purple"}
 
-
 labels = {0:r"$\mathrm{Mass}$" ,
            1:r"$\mathrm{Period}$",
            2:r"$\mathrm{Eccentricity}$",
            3:r"$\mathrm{Inclination}$",
-           4:r"$\mathrm{Argument\ (\omega)}$",
+           4:r"$\mathrm{Argument}$",
            5:r"$\mathrm{Mean\ anomaly}$",
            6:r"$\mathrm{\Omega}$"}
 
@@ -59,3 +42,28 @@ units_latex = {0:r"$\mathrm{[M_{\oplus}]}$",
          4:r"$\mathrm{[deg]}$",
          5:r"$\mathrm{[deg]}$",
          6:r"$\mathrm{[deg]}$"}
+
+
+# =======  DANGER ZONE!
+# Do not change these constants, at least that you are a contributor and you know
+# what are you doing ;-)
+
+# Percentage of stellar mass to set as upper mass limit
+k_limit = 0.01 
+
+# var_names
+col_names = (
+			"mass", 
+			"period", 
+			"ecc", 
+			"inclination", 
+			"argument", 
+			"mean_anomaly",
+            "ascending_node"
+            )
+# Conversion factors
+Mearth_to_Msun = 3.0034893488507934e-06
+
+Msun_to_Mearth = 332946.07832806994
+
+Rsun_to_AU = 0.004650467260962157

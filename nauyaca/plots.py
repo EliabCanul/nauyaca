@@ -60,6 +60,7 @@ class Plots:
         default, it is taken from nauyaca.constants.colors
     """
 
+
     PSystem : None
     hdf5_file : str = None
     temperature : int = 0
@@ -70,8 +71,9 @@ class Plots:
     colors : dict = field(default_factory=lambda: colors)
 
 
-    def plot_TTVs(self, flat_params=None, nsols=1, mode='random', show_obs=True, 
-                    residuals=True, size=(10,10), line_kwargs={'alpha':0.5}):
+    def TTVs(self, flat_params=None, nsols=1, mode='random', show_obs=True, 
+                residuals=True, size=(10,10), line_kwargs={'alpha':0.5},
+                xlabel="Time [days]"):
         """Plot the TTVs from the hdf5_file class instance, or from the
         specified flat_params.
 
@@ -107,6 +109,8 @@ class Plots:
             The figure size, by default (10,10)
         line_kwargs : dict, optional
             A dictionary to pass **kwargs for the lines, by default {'alpha':0.5}
+        xlabel : str, optional
+            horizontal label of the figure, by default "Time [days]"
         """        
 
         mins = 1440.
@@ -197,8 +201,8 @@ class Plots:
             _, axes = plt.subplots(figsize=size)
 
         # X limits defined from time span
-        deltat = (self.PSystem.Ftime - self.PSystem.T0JD) * 0.02
-        l_xlim, r_xlim = self.PSystem.T0JD-deltat, self.PSystem.Ftime+deltat
+        deltat = (self.PSystem.ftime - self.PSystem.t0) * 0.02
+        l_xlim, r_xlim = self.PSystem.t0-deltat, self.PSystem.ftime+deltat
 
         index = 0
 
@@ -259,11 +263,11 @@ class Plots:
                         # Perform the simulation for the current solution
                         SP = run_TTVFast(solution,  
                                     mstar=self.PSystem.mstar,
-                                    init_time=self.PSystem.T0JD, 
-                                    final_time=self.PSystem.Ftime, 
+                                    init_time=self.PSystem.t0, 
+                                    final_time=self.PSystem.ftime, 
                                     dt=self.PSystem.dt)                    
 
-                        EPOCHS = calculate_ephemeris(self.PSystem, SP)
+                        EPOCHS = _ephemeris(self.PSystem, SP)
                         
                         # Make coincide the number of observed and simulated transits
                         #   Does is it necessary? It's better to plot all the
@@ -271,11 +275,11 @@ class Plots:
                         #epochs = {epoch[0]:EPOCHS[planet_id][epoch[0]] for epoch in x_obs }
 
                         # model
-                        x_cal, y_cal, model_obs = self._calculate_model(EPOCHS[planet_id]) #epochs
+                        x_cal, y_cal, model_cal = self._calculate_model(EPOCHS[planet_id]) #epochs
                         
                         # Plot O-C
                         ax.plot(y_cal, 
-                                (y_cal-model_obs.predict(x_cal))*mins , 
+                                (y_cal-model_cal.predict(x_cal))*mins , 
                                 color= self.colors[index] ,
                                 **line_kwargs
                                 )
@@ -285,7 +289,7 @@ class Plots:
                         if residuals:
                             #
                             residual_obs = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins  for x,y in zip(list(x_obs.flatten()), list(y_obs))}
-                            residual_cal = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
+                            residual_cal = {x:(y-model_cal.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
 
                             residuals = [residual_obs[r]-residual_cal[r] for r in sorted(ttvs_dict.keys())]
                             
@@ -301,14 +305,14 @@ class Plots:
             else:
                 print(f"No ttvs have been provided for planet {planet_id}")
 
-        plt.xlabel(f"Time [days]")
+        plt.xlabel(f"{xlabel}")
         plt.tight_layout()
         plt.subplots_adjust(top=0.95)
        
         return 
 
 
-    def plot_hist(self,  chains=None, titles=False, size=None):
+    def hist(self,  chains=None, titles=False, size=None):
         """Make histograms of the a posteriori distributions for each 
         planetary parameter
 
@@ -320,7 +324,7 @@ class Plots:
             If the class attribute hdf5_file is provided, then the chains are 
             taken from the keyword 'CHAINS' from the hdf5 file. Note that the
             class atribute burnin is applied over the chains independently of
-            the origin (plot_hist kwarg or hdf5 file).
+            the origin (chains kwarg or hdf5_file).
         titles : bool, optional
             A flag to specify whether medians and 1-sigma errors are plotted at
             the top of histograms, by default False
@@ -330,7 +334,7 @@ class Plots:
         """                
 
         if size is None:
-            size=(16,3*self.PSystem.NPLA)
+            size=(16,3*self.PSystem.npla)
         
         assert(0.0 <= self.burnin <= 1.0), f"burnin must be between 0 and 1!"
 
@@ -367,15 +371,15 @@ class Plots:
         # Figure
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
-        _, axes = plt.subplots(nrows=self.PSystem.NPLA, ncols=7, figsize=size)
+        _, axes = plt.subplots(nrows=self.PSystem.npla, ncols=7, figsize=size)
 
         dim = 0
-        for n in range(self.PSystem.NPLA):
+        for n in range(self.PSystem.npla):
             for p in range(7):
                 param_idx = (n*7) + p
 
                 # Write labels
-                if n == self.PSystem.NPLA-1:
+                if n == self.PSystem.npla-1:
                     axes[n, p].set_xlabel(labels[p]+" "+units_latex[p], labelpad=10)
                 # Write planet names
                 if p == 0:
@@ -391,9 +395,9 @@ class Plots:
                     
                     if p == 1: 
                         # For period increase decimals
-                        tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,4),
-                                                        round(up-med,4),
-                                                        round(med-low,4))
+                        tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,5),
+                                                        round(up-med,5),
+                                                        round(med-low,5))
                     elif p == 2:
                         # For eccentricity increase decimals
                         tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,3),
@@ -422,7 +426,7 @@ class Plots:
         return
 
 
-    def plot_chains(self, chains=None, plot_means=False, thin=1, size=None):
+    def trace_plot(self, chains=None, plot_means=False, thin=1, size=None):
         """Plot the mcmc chains along all the dimensions
 
         Parameters
@@ -443,7 +447,7 @@ class Plots:
         """                
 
         if size is None:
-            size=(20, 8*self.PSystem.NPLA)
+            size=(20, 8*self.PSystem.npla)
 
 
         xlabel = 'Iteration / intra_steps '
@@ -469,12 +473,12 @@ class Plots:
 
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
-        nrows = self.PSystem.NPLA*7 - len(self.PSystem.constant_params)
+        nrows = self.PSystem.npla*7 - len(self.PSystem.constant_params)
         
         _, axes = plt.subplots(nrows=nrows, ncols=1, figsize=size, sharex=True)
 
         dim = 0
-        for pla in range(self.PSystem.NPLA):
+        for pla in range(self.PSystem.npla):
             for param in range(7):
                 param_idx = (pla*7) + param
 
@@ -498,7 +502,7 @@ class Plots:
         return
 
 
-    def plot_corner(self, chains=None, color='#0880DE',titles=False, corner_kwargs={}):
+    def corner_plot(self, chains=None, color='#0880DE',titles=False, corner_kwargs={}):
         """A corner plot to visualize possible correlation between parameters
 
         This function uses the corner.py package. If you use it in your research,
@@ -593,7 +597,7 @@ class Plots:
         return
 
 
-    def plot_monitor(self,size=(20,10)):
+    def monitor(self,size=(20,10)):
         """Plot a monitor of the mcmc performance
 
         It encompass the temperature adaptation, swap fractions, Loglikelihood
@@ -648,7 +652,7 @@ class Plots:
         return
 
 
-    def plot_convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1,size=(20,10)):
+    def convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1,size=(20,10)):
         """Plot two convergence test, namely, Gelman-Rubin and Geweke
 
         For Gelman-Rubin (R), a valid value for convergence assessment is R < 1.01
@@ -662,7 +666,7 @@ class Plots:
             hdf5 file.
         names : list, optional
             A list with param names that should correspond to ndim, by default 
-            None, in which case the names are taken form the current PSystem.
+            None, in which case the names are taken from the current PSystem.
         nchunks_gr : int, optional
             Number of chunks to divide the chain steps in the Gelman-Rubin test,
             by default 10.
@@ -768,16 +772,16 @@ class Plots:
 
 
     def _check_dimensions(self, fp):
-        """A hel function to verify that solution contains ALL the required 
-        parameters to make the simulation. If don't, complete the fieldswith the 
-        constant parameters. fp must be list. This is used in plot_TTVs function"""
+        """A helpful function to verify that solution contains ALL the required 
+        parameters to make the simulation. If don't, complete the fields with the 
+        constant parameters. fp must be list. This is used in TTVs plot function"""
 
-        if len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)!=0:
+        if len(fp) == self.PSystem.npla*7 and len(self.PSystem.constant_params)!=0:
             # there are the correct number of dimensions, but should be more?
             
             raise ValueError('Invalid values in flat_params. Pass just planetary parameters')
             
-        elif len(fp) == self.PSystem.NPLA*7 and len(self.PSystem.constant_params)==0:
+        elif len(fp) == self.PSystem.npla*7 and len(self.PSystem.constant_params)==0:
             # dimensions are correct
             
             return fp
@@ -787,3 +791,4 @@ class Plots:
             for k, v in self.PSystem.constant_params.items(): 
                 fp.insert(k, v)
             return fp
+            

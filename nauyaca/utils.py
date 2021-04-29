@@ -5,10 +5,10 @@ import h5py
 from .constants import Mearth_to_Msun, col_names
 
 
-__all__ = ['run_TTVFast', 'calculate_epochs', 'log_likelihood_func',
+__all__ = ['run_TTVFast', 'calculate_ephemeris', 'log_likelihood_func',
             'init_walkers', 'mcmc_summary', 'extract_best_solutions', 
             'get_mcmc_results', 'geweke', 'gelman_rubin',  
-            'cube_to_physical', 'calculate_ephemeris', '_remove_constants']
+            'cube_to_physical', '_ephemeris', '_remove_constants']
 
 __doc__ = f"Miscelaneous functions to support the main modules. Available are: {__all__}"
 
@@ -21,6 +21,7 @@ def run_TTVFast(flat_params, mstar, init_time=0., final_time=None, dt=None):
     flat_params : array or list
         A flat array containing the seven planet parameters of the first planet
         concatenated with the seven parameters of the next planet and so on. 
+        Thus, it should be of length 7 x number of planets.
         The order per planet must be: 
         mass [Mearth], period [days], eccentricity, inclination [deg], argument
         of periastron [deg], mean anomaly [deg] and ascending node [deg].
@@ -80,8 +81,8 @@ def run_TTVFast(flat_params, mstar, init_time=0., final_time=None, dt=None):
     return SP
 
 
-def calculate_ephemeris(PSystem, SP):
-    """Calculates the simulated ephemeris per planet
+def _ephemeris(PSystem, SP):
+    """Calculates the simulated ephemeris per planet from the TTVFast result
 
     Parameters
     ----------
@@ -105,7 +106,7 @@ def calculate_ephemeris(PSystem, SP):
     ephemeris = {}
     try:        
         # Save the transit epochs of every planet and convert them 
-        # to julian days. Time T0JD is in julian days. 
+        # to julian days. Time t0 is in julian days. 
         for planet_id, planet_number in PSystem.planets_IDs.items(): 
 
             planet_mask = SP[0] == planet_number
@@ -122,7 +123,7 @@ def calculate_ephemeris(PSystem, SP):
     return ephemeris    
 
 
-def calculate_epochs(PSystem, flat_params):
+def calculate_ephemeris(PSystem, flat_params):
     """A function to calculate simulated ephemeris from normalized solutions
 
     Parameters
@@ -152,43 +153,72 @@ def calculate_epochs(PSystem, flat_params):
     # Get 'positions' from signal in TTVFast
     signal_position = run_TTVFast(flat_params,  
                                 PSystem.mstar, 
-                                init_time=PSystem.T0JD, 
-                                final_time=PSystem.Ftime, 
+                                init_time=PSystem.t0, 
+                                final_time=PSystem.ftime, 
                                 dt=PSystem.dt)
 
     # Compute simulated ephemerids (epochs: transits)
-    epochs = calculate_ephemeris(PSystem, signal_position)
+    epochs = _ephemeris(PSystem, signal_position)
     
     return epochs
 
 
-def _chi2(observed, sigma, simulated):
-    """A help function to calculate chi square of all planets"""
+def _chi2(observed, sigma, simulated, individual=False):
+    """A function to calculate chi square statistic from observed and simulated
+    ephemeris
 
-    # Comparar tamaños de vectores para evitar el try & except
-    # Rellenar con last_valid_epoch hasta el ultimo dato del vector
+    Parameters
+    ----------
+    observed : dict
+        A dictionary where keys are the epochs and values the observed mid-transit
+        times
+    sigma : dict
+        A dictionary where keys are the epochs and values the uncertainties in
+        the observed mid-transit times
+    simulated : dict
+        A dictionary where keys are the epochs and values the simulated 
+        mid-transit times
+    individual : bool, optional
+        A flag to return individual chi squaere per planet, by default False
 
-    chi2 = 0.0
+    Returns
+    -------
+    float (individual=False)
+        The sum of the chi square of all the planets in the system
+
+    dict (if individual=True)
+        The chi square per planet in the system
+    """
+    
+    if individual:
+        ind_chi2 = {}
+        
+    chi2_tot = 0.0
     for planet_id, obs in observed.items():
-           
-        #obs = ttvs_obs #PS.transit_times[planet_id]
+
+        chi2 = 0.0
+
         sim = simulated[planet_id]
         sig = sigma[planet_id]  
 
-        # FIXME: is there a better way of managing non-detected simulated
-        #        transits avoiding this trick?
-        try:
-            for epoch, times_obs in obs.items():
-                chi2 += ((times_obs - sim[epoch])/sig[epoch])**2
-                last_valid_epoch = epoch
-        except:
+        for epoch, times_obs in obs.items():
             try:
-                chi2 +=  ( (times_obs- sim[last_valid_epoch]) /sig[epoch])**2   
+                chi2 += ((times_obs - sim[epoch])/sig[epoch])**2
 
             except:
-                return 1e20 + chi2
-
-    return chi2
+                # Add a high constant each time a simulated transit 
+                # is not detected
+                chi2 += 1e+20
+    
+        chi2_tot += chi2
+        
+        if individual:
+            ind_chi2[planet_id] = chi2
+    
+    if individual:
+        return ind_chi2
+    else:
+        return chi2_tot
 
 
 def calculate_chi2(flat_params, PSystem):
@@ -213,20 +243,94 @@ def calculate_chi2(flat_params, PSystem):
     Returns
     -------
     float
-        The added chi square of all the planets in the system
+        The chi square of all the planets in the system
     """
 
-    # Verify that proposal is inside boundaries.
+    # Verify that proposal is inside the boundaries.
     if False in intervals(PSystem.hypercube, flat_params):
         return np.inf 
     else:
         pass
     
-    sim_times = calculate_epochs(PSystem, flat_params)
+    sim_times = calculate_ephemeris(PSystem, flat_params)
 
-    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times)
+    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times, individual=False)
 
     return chi2
+
+
+def calculate_chi2_physical(flat_params, PSystem, individual=False, 
+                            insert_constants=False, get_ephemeris=False):
+    """Calculates the chi square of TTVs fitting given a set of planetary parameters.
+
+    If required, it also returns the simulated ephemeris per planet
+
+    This function do not verify that planetary parameters are inside the 
+    boundaries in PSystem.bounds
+
+    Parameters
+    ----------
+    flat_params : array or list
+        A flat array containing the planet parameters of the first planet
+        concatenated with the parameters of the next planet and so on. 
+        The order per planet must be: 
+        mass [Mearth], period [days], eccentricity, inclination [deg], argument
+        of periastron [deg], mean anomaly [deg] and ascending node [deg].
+    PSystem : 
+        The Planetary System object
+    individual : bool, optional
+        A flag to return individual chi squares of the planets, by default False.
+    insert_constants : bool, optional
+        A flag to insert the constant parameters from PSystem.constant_params, 
+        by default False. 
+        If set to False, flat_params must be of length 7 x number of planets. 
+        If set to True, then flat_params should not include the constant parameters.
+    get_ephemeris : bool, optional
+        A flag to get the simulated ephemeris resulting from the flat_params,
+        by default False. If set to True, then returns a tuple with the simulated
+        ephemeris per planet
+
+    Returns
+    -------
+    float (individual=False)
+        The sum of the chi square of all the planets in the system
+
+    dict (if individual=True)
+        The chi square per planet in the system
+    
+    tuple (float/dict, dict)
+        If get_ephemeris=True, then return the chi square and the simulated 
+        ephemeris
+    """
+
+    x = list(flat_params)  
+
+    if insert_constants:
+        for k, v in PSystem.constant_params.items(): 
+            x.insert(k, v)
+
+    if len(x) == 7 * PSystem.npla:
+        pass 
+    else:
+        sys.exit("Length of -flat_params- mismatch number of dimensions per planet")
+
+    # Get 'positions' from signal in TTVFast
+    signal_position = run_TTVFast(x,  
+                                PSystem.mstar, 
+                                init_time=PSystem.t0, 
+                                final_time=PSystem.ftime, 
+                                dt=PSystem.dt)
+
+    # Compute simulated ephemerids (epochs: transits)
+    sim_times = _ephemeris(PSystem, signal_position)
+    
+    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times, 
+                individual=individual)
+
+    if get_ephemeris:
+        return (chi2, sim_times)
+    else:
+        return chi2
 
 
 def log_likelihood_func(flat_params, PSystem):
@@ -243,7 +347,7 @@ def log_likelihood_func(flat_params, PSystem):
         mass, period, eccentricity, inclination, argument of periastron, mean 
         anomaly and ascending node.
         Unlike to flat_params in run_TTVFast(), flat_params here is in the
-        normalized version (between 0 and 1) and also the constant parameters
+        normalized version (between 0 and 1) and the constant parameters
         should not be included.
     PSystem : 
         The Planetary System object
@@ -260,28 +364,28 @@ def log_likelihood_func(flat_params, PSystem):
     else:
         pass
     
-    sim_times = calculate_epochs(PSystem, flat_params)
+    sim_times = calculate_ephemeris(PSystem, flat_params)
 
     # Compute the log-likelihood
-    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times)
+    chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times, individual=False)
 
     loglike = - 0.5*chi2 - sum(PSystem.second_term_logL.values())
     
     return  loglike 
 
 
-
 def cube_to_physical(PSystem, x):
     """A function to convert from normalized solutions to physicals
 
-    This function also adds the constant values into the returned array
+    This function also adds the constant values into the returned array. Thus,
+    x should not include the constant parameters
 
     Parameters
     ----------
     PSystem : 
         The Planetary System object
     x : list
-        A list with the normalized solutions
+        A list with the normalized solutions (between 0 and 1)
 
     Returns
     -------
@@ -300,7 +404,7 @@ def cube_to_physical(PSystem, x):
     x = list(x)  
     for k, v in PSystem.constant_params.items(): 
         x.insert(k, v)
-    x = np.array(np.split(np.array(x), PSystem.NPLA))
+    x = np.array(np.split(np.array(x), PSystem.npla))
 
     # Invert the parameterized angles to get argument and ascending node
     w = (x[:,4] + x[:,5])/2.
@@ -311,9 +415,10 @@ def cube_to_physical(PSystem, x):
     return x.flatten()
 
 
-
 def _remove_constants(PSystem, x):
-    """A help function to remove the constant parameters"""
+    """A help function to remove the constant parameters from x. In this case,
+    x must be of length 7 x number of planets
+    """
 
     indexes_remove = list(PSystem.constant_params.keys())
     x=list(x)
@@ -387,7 +492,6 @@ def init_walkers(PSystem, distribution=None, opt_data=None, ntemps=None,
     else:
         print("Arguments not understood")
 
-       
 
 def _func_uniform(PSystem, ntemps=None, nwalkers=None):
     """A help function to create walkers from a uniform distribution"""
@@ -404,7 +508,6 @@ def _func_uniform(PSystem, ntemps=None, nwalkers=None):
     POP0 = np.array(POP0).T.reshape(ntemps, nwalkers, len(PSystem.hypercube)) 
 
     return POP0
-
 
 
 def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None, 
@@ -425,7 +528,7 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
     # Clean and sort results. Get just data inside fbest.
     # FIXME: There is a bug when opt_data is given from file. It must be
     # converted to list: np.genfromtxt('syn52.opt').tolist()
-    [opt_data.remove(res) for res in opt_data if res[0]>=1e+50]
+    [opt_data.remove(res) for res in opt_data if res[0]>=1e+20]
     opt_data = sorted(opt_data, key=lambda x: x[0])
     original_len = len(opt_data)
 
@@ -524,79 +627,6 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
 
     return POP0
 
-"""
-def _func_ladder(PSystem, distribution, ntemps=None, nwalkers=None,
-                    opt_data=None, fbest=None):
-    print("\n--> Selected distribution: {}".format(distribution))      
-    
-
-    #! Added to probe with dictinary
-    if type(opt_data) == dict:
-        x = opt_data['cube']
-        fun = opt_data['chi2']
-        opt_data = np.column_stack((fun, x))
-
-    [opt_data.remove(res) for res in opt_data if res[0]>=1e+50]
-    opt_data = sorted(opt_data, key=lambda x: x[0])
-    original_len = len(opt_data)
-
-    cut = int(len(acomodar)*fbest) # index of maximum chi2
-    opt_data = opt_data[:cut]
-
-    f = lambda x: x[1:]
-    parameters = list(map(f, opt_data ))
-    print(f"    {len(opt_data)} of {original_len} solutions taken")
-    
-    #parameters_sep = list(_chunks(parameters, ntemps)) 
-    ##indexes = list(PSystem.constant_params.keys())
-
-    POP0 = []
-    #for par_sep in parameters_sep:  # Iterates over chunks (temperatures)
-    for pt in range(ntemps):  # Iterates over chunks (temperatures)
-        #
-        parameters_sep = list(_chunks(parameters, ntemps-pt)) 
-        par_sep = parameters_sep[0]
-        #
-        
-        n_sols=len(par_sep)
-        #print('n_sols: ', n_sols )
-        par_sep_T = list(np.array(par_sep).T)
-
-        # Delete constant params
-        #for index in sorted(indexes, reverse=True):
-        #    del par_sep_T[index]
-        
-        par_sep_2 = np.array(par_sep_T).T
-        #pprint(par_sep_2)
-        
-        # choose randomly a index in the chunk
-        current_index = np.random.choice(range(n_sols), nwalkers ) 
-        #print('current_index: ', current_index)    
-        
-        for i in current_index:
-            current_solution = par_sep_2[i]
-            
-            perturbed_solution = []
-            rdmu_b = np.random.uniform(0.0, 0.1)
-            for par_idx, param in enumerate(current_solution):
-                # Take random numbers btw 3% from the solutions and the boundaries
-                #linf = (param - PSystem.bounds[par_idx][0]) * rdmu_b
-                #lsup = (PSystem.bounds[par_idx][1] - param) * rdmu_b
-                linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
-                lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b
-                delta = np.random.uniform(param-linf, param+lsup)
-
-                perturbed_solution.append(delta)   
-        
-            POP0.append(perturbed_solution)
-        #print('len POP:', len(POP0))    
-        
-        #print('-------')    
-
-    POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(PSystem.hypercube))  
-    return POP0
-"""
-
 
 def _chunks(l, n):
     """Yield n number of sequential chunks from l."""
@@ -606,7 +636,8 @@ def _chunks(l, n):
         yield l[si:si+(d+1 if i < r else d)]
 
 
-def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, verbose=True):
+def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=False,
+                verbose=True):
     """Prints a summary of the mcmc run and returns the chains in physical
     values for individual planet parameters after the specified burnin.
 
@@ -620,9 +651,13 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, verbose=True):
         A fraction between 0 and 1 to discard as burn-in at the beggining of
         the chains, by default 0.0.
     fthinning : int, optional
-        A factor to thin the chains, by default 1. A fhtining of 10 in a 1000
+        A factor to thin the chains, by default 1. A fthining of 10 in a 1000
         steps chain, will return the summary for 100 steps. Recommendable for 
         longer chains.
+    get_posteriors : bool, optional
+        A flag to return a dictionary of posteriors, by default False. If set
+        to True, then this function returns a dictionary of planet parameters
+        as keys and flatten arrays along the steps as values.
     verbose : bool, optional
         A flag to allow for verbose (True) or return the posteriors in quiet
         form (False), by default True.
@@ -718,14 +753,15 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, verbose=True):
 
         low, med, up = np.percentile(parameter, [16,50,84])
 
-        posteriors[f'{name}'] = parameter
+        if get_posteriors:
+            posteriors[f'{name}'] = parameter
 
         if verbose:
             if i == 1: 
                 # For period increase decimals
-                tit = "%s ^{+%s}_{-%s} " % (round(med,4),
-                                                round(up-med,4),
-                                                round(med-low,4))
+                tit = "%s ^{+%s}_{-%s} " % (round(med,5),
+                                                round(up-med,5),
+                                                round(med-low,5))
             elif i == 2:
                 # For eccentricity increase decimals
                 tit = "%s ^{+%s}_{-%s}" % (round(med,3),
@@ -738,8 +774,10 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, verbose=True):
             #ndim += 1
             print("   %15s      %20s" % (name, tit))
     
-    return posteriors
-
+    if get_posteriors:
+        return posteriors
+    else:
+        return
 
 
 def extract_best_solutions(hdf5_filename, write_file=True):
@@ -796,7 +834,6 @@ def extract_best_solutions(hdf5_filename, write_file=True):
         print(f'--> Best solutions from the {hdf5_filename} will be written at: {best_file}')
 
     return sorted_by_chi2
-
 
 
 def get_mcmc_results(hdf5_file, keywords=None, which_keys=False):
@@ -862,12 +899,12 @@ def gelman_rubin(chains=None, hdf5_file=None, nchunks_gr=10, thinning=1, names=N
         The hdf5 file name to extract the chains, by default None. 
     nchunks_gr : int, optional
         Number of chunks to divide the chains length, by default 10. At each
-        node the Gelman-Rubin statstic is calculated.
+        node the Gelman-Rubin statistic is calculated.
     thinning : int, optional
         A factor to thin walkers, by default 1. Change to greater values for 
         longer chains or with several walkers.
     names : list, optional
-        A list of names to match with the number of dimentions, by default None.
+        A list of names to match with the number of dimensions, by default None.
         These names will be returned in the dictionary.
 
     Returns
@@ -1046,8 +1083,6 @@ def geweke(chains=None, hdf5_file=None, names=None, burnin=0.0):
     return Z
 
 
-
-
 def _z_score(theta_a, theta_b):
     """A help function to calculate the Z-score used in the geweke test"""
 
@@ -1096,3 +1131,4 @@ def writefile(_file , writing , text, align):
         outfile.close()
 
     return
+    

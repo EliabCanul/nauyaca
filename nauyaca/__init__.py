@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""A tool for the TTVs inversion problem"""
+"""Nauyaca: A tool for the TTVs inversion problem"""
 
 # Author: Eliab F. Canul Canché
 

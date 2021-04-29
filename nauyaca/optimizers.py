@@ -4,7 +4,7 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 from multiprocessing import Pool
-from .utils import * # Miztli: from NAU.utils import *
+from .utils import * # Miz: from NAU.utils import *
 from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants, calculate_chi2 # Miztli: from NAU.utils import writefile, intervals
 import copy
 import warnings
@@ -13,7 +13,7 @@ from scipy.optimize import minimize
 warnings.filterwarnings("ignore")
 
 
-__doc__ = "A module to run minimization algorithms"
+__doc__ = "A module to run a sequence of minimization algorithms"
 
 __all__ = ["Optimizers"]
 
@@ -42,6 +42,7 @@ class Optimizers:
     path : str = './'
     suffix : str = ''
 
+
     @staticmethod
     def _differential_evolution_nelder_mead(PSystem, base_name, indi=0):
         """Base function to run the sequence of minimization algorithms
@@ -66,6 +67,7 @@ class Optimizers:
         
         base_name_cube, base_name_phys = base_name
         
+        # TODO: Decide wheter DE is replaced by agapy
         """ 
                         -----Differential Evolution----- 
         """
@@ -81,6 +83,11 @@ class Optimizers:
         x0 = DE.x
         f0 = DE.fun
 
+        # Reduce the boundaries after DE such that PO and NM explore a smaller 
+        # parameter space. It would help to avoid getting solutions stucked 
+        # in the current boundaries. Modify momentarily the hypercube 
+        PSystem.hypercube = [ [max(0,x-.3), min(1,x+.3)] for x in x0]
+        
         """
                             -----Powell-----
         """
@@ -103,9 +110,9 @@ class Optimizers:
             args=(PSystem,))
         x2 = NM.x
         f2 = NM.fun
-        
+
         # Verbose
-        print(f" {indi+1} | DE: {f0 :.3f}  PW: {f1 :.3f}  NM: {f2 :.3f}")
+        print(f" {indi+1} |  {f0 :.3f}  -->  {f1 :.3f}  -->  {f2 :.3f}")
 
         # Reconstruct flat_params adding the constant values
         x2_cube = x2.tolist() 
@@ -166,7 +173,7 @@ class Optimizers:
         print("--> Results will be saved at:")
         print(f'     * {base_name_cube} (normalized)')
         print(f'     * {base_name_phys} (physical)')
-        print(f'--> Reference time of the solutions: {self.PSystem.T0JD} [days]')
+        print(f'--> Reference time of the solutions: {self.PSystem.t0} [days]')
         print('- - - - - - - - - - - - - - - - - - - - -')
         print('Solution  |   chi square from optimizers'        )
         print('- - - - - - - - - - - - - - - - - - - - -')
