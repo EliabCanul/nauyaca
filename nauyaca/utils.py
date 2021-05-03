@@ -207,7 +207,7 @@ def _chi2(observed, sigma, simulated, individual=False):
 
             except:
                 # Add a high constant each time a simulated transit 
-                # is not detected
+                # is not detected. There is any ohter better way?
                 chi2 += 1e+20
     
         chi2_tot += chi2

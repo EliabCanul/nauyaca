@@ -93,7 +93,7 @@ class Optimizers:
         """
         PO = minimize(
             calculate_chi2, list(x0), method= 'Powell', 
-            #bounds=PSystem.hypercube, #PSystem.bounds,  # hypercube
+            #bounds=PSystem.hypercube, #PSystem.bounds,  # Unnecessary in recent scipy versions
             options={'maxiter':15000, 'maxfev':15000, 
                      'xtol':0.000001, 'ftol':0.1, 'disp':False, 'adaptive':True},
             args=(PSystem,))
