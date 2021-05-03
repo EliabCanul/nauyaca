@@ -86,7 +86,7 @@ class Optimizers:
         # Reduce the boundaries after DE such that PO and NM explore a smaller 
         # parameter space. It would help to avoid getting solutions stucked 
         # in the current boundaries. Modify momentarily the hypercube 
-        #PSystem.hypercube = [ [max(0,x-.3), min(1,x+.3)] for x in x0]
+        PSystem.hypercube = [ [max(0,x-.3), min(1,x+.3)] for x in x0]
         
         """
                             -----Powell-----
