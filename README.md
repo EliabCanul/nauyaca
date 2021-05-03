@@ -1,12 +1,9 @@
 # nauyaca
 Nauyaca is a tool for the TTVs inversion problem. Planetary masses and orbits are inferred from mid-transit times fitting.
 
-See Installation file for detailed installation steps.
+See the Installation file for detailed steps to build nauyaca in your computer.
 
-Clone the repository in your local home:
+From your cloned folder, open the Documentation to explore jupyter notebooks (or .html files) to see interactive examples using nauyaca.
 
-git clone https://github.com/EliabCanul/nauyaca.git
+The Examples folder contains many scripts with extra features in nauyaca. More examples will be available soon!
 
-From your cloned folder, open the jupyter notebook (or the .html) files at the Documentation directory to see the examples of the nauyaca's usage.
-
-More examples will be available soon!
