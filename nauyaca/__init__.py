@@ -10,6 +10,8 @@ from .optimizers import Optimizers
 from .mcmc import MCMC
 from .plots import Plots
 
+__version__ = "0.1.0"
+
 __all__ = [
 		"SetPlanet",
 		"PlanetarySystem",
