@@ -525,10 +525,9 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
     # TODO: It is necessary to give the input in 'cube' format? or it can be 'phys' either?
     assert((opt_data[:,1:]>=0.).all() and (opt_data[:,1:] <=1.0).all()), "Invalid opt_data. Provide 'cube' solutions"
 
-    # Clean and sort results. Get just data inside fbest.
-    # FIXME: There is a bug when opt_data is given from file. It must be
-    # converted to list: np.genfromtxt('syn52.opt').tolist()
-    [opt_data.remove(res) for res in opt_data if res[0]>=1e+20]
+    # Remove the solutions where chi2 have solutions => 1e+20
+    # since that value means that optimizers didn't find a solutions
+    opt_data = opt_data[opt_data[:,0] <1e+20]
     opt_data = sorted(opt_data, key=lambda x: x[0])
     original_len = len(opt_data)
 

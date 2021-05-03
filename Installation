@@ -1,75 +1,106 @@
-Python 3.7 is required to avoid controverse versions. Though, greater versions should work.
 
-Also, -pipenv- is requiered to manage the dependencies.
+# INSTALLATION
 
-If you do not have pipenv, install via: pip install pipenv or pip3 install pipenv
+# nauyaca will be installed in a virtual environment in order to avoid
+# the installation of packages and dependences in your default python environment.
+# Python =>3.7 is required to avoid controverse versions. 
+# The installation procedure consists in three main steps:
+# 1.- Installing the dependency manager 'poetry'
+# 2.- Cloning nauyaca and installing dependencies
+# 3.- Set helpful variables in your bash 
 
-_______________________________________________________________
-_______________________________________________________________
-# Installation
 
-**Go to your /home directory**
+# 1 =============================================
+
+# The installation is managed by 'poetry'. If you have not installed, follow 
+# the instructions in:   https://python-poetry.org/docs/
+# For example, for osx/ linux/ bashonwindows, type in your /home directory:
+
+curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+
+# It will download poetry. Then, type
+source $HOME/.poetry/env
+
+# type 
+poetry
+
+# It should display the poetry commands and options. If so, you're done.
+
+2 =============================================
+
+#Go to your /home directory
 
 cd /home
 
-**Clone the repository**
+# Clone the nauyaca's repository
 
 git clone https://github.com/EliabCanul/nauyaca.git
 
-**Change to nauyaca directory**
+# Change to nauyaca directory 
 
 cd nauyaca
 
-**Install the dependencies**
 
-pipenv install
+# Install the dependencies in pyproject.toml file by typing
 
-**Close the terminal**
+poetry install
 
-exit
+# Create the virtual environment for nauyaca,
 
-**In the directory of your current shell (for example .bashrc), add the path to nauyaca**
+poetry shell
 
-export PYTHONPATH:/home/{mypc}/nauyaca
+# It will activate the nauyaca's virtual environment and will show the
+# path where the environment lives. Something like:
 
-**substitute {mypc} for your pc name**
+/home/{myuser}/.cache/pypoetry/virtualenvs/nauyaca-qxobQ2ei-py3.7/bin/activate
 
-**source your shell file**
+# Copy YOUR path since it will be useful in the next step
 
+# 3 =============================================
+
+# In order to ease the nauyaca usage, define the following lines 
+# in your .bash/.bashrc file
+
+# nauyaca
+# 3.1 Add the nauyaca directory to your python path, 
+
+export PYTHONPATH=$PYTHONPATH:/home/{myuser}/nauyaca
+
+# 3.2 Create an alias to activate nauyaca, using the path you copied above
+
+alias nau='source /home/{myuser}/.cache/pypoetry/virtualenvs/nauyaca-qxobQ2ei-py3.7/bin/activate'
+
+# 3.3 Make available poetry
+
+source $HOME/.poetry/env
+
+# save and exit your bash and source it
 source .bashrc
 
-**Testing the examples**
+# ===============
+# If you get at this point, you should have installed nauyaca correctly ;-)
 
-**In the nauyaca's main directory (where the Pipfile file is), initialize the virtual environment by typing**
+# In order to test the proper installation, open a new terminal and go to
+# the Examples directory in nauyaca.
+# Activate the nauyaca virtual environment by typping
 
-pipenv shell
+nau
 
-_______________________________________________________________
-_______________________________________________________________
-# Usage
+# It should activate nauyaca wherever in your computer you are
 
-**In the Documentation directory there are many jupyter notebooks showing the main features in nauyaca**
-**But first, you have to install a jupyter kernel inside the virtual environment**
+# Run the examples, and see nauyaca in action!
 
-ipython kernel install --user --name=nau
-
-**Then, open the notebooks in Documentation**
-
-cd Documentation
-
-jupyter notebook
-
-**This will display the notebooks as usual**
-**Then, inside the notebooks, change the current kernel to nau**
-
-Kernel --> Change kernel --> nau
+python quick_fit.py
 
 
-**Run the example. These tutorials have the main aim of showing the main usage of Nauyaca**
+===============
+# A detailed explanation of these examples can be found in Examples/README file
 
-**More python scripts can be seen at Examples**
 
-**Exit from the nauyaca environment by typing**
 
-exit
+
+
+
+
+
 

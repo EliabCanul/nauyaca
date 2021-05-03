@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "nauyaca"
+version = "0.1.0"
+description = "A tool to deal with TTVs inversion problem"
+authors = ["Eliab Canul <ecanul@astro.unam.mx>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+ttvfast = "0.3.0"
+numpy = "1.20.1"
+scipy = "1.6.0"
+ptemcee = "1.0.0"
+h5py = "2.9.0"
+matplotlib = "3.3.3"
+seaborn = "0.11.0"
+sklearn = "0.0"
+corner = "2.0.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -4,8 +4,8 @@ import numpy as np
 import sys
 from dataclasses import dataclass
 from multiprocessing import Pool
-from .utils import * # Miz: from NAU.utils import *
-from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants, calculate_chi2 # Miztli: from NAU.utils import writefile, intervals
+from .utils import * 
+from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants, calculate_chi2 
 import copy
 import warnings
 from scipy.optimize import differential_evolution
@@ -86,14 +86,14 @@ class Optimizers:
         # Reduce the boundaries after DE such that PO and NM explore a smaller 
         # parameter space. It would help to avoid getting solutions stucked 
         # in the current boundaries. Modify momentarily the hypercube 
-        PSystem.hypercube = [ [max(0,x-.3), min(1,x+.3)] for x in x0]
+        #PSystem.hypercube = [ [max(0,x-.3), min(1,x+.3)] for x in x0]
         
         """
                             -----Powell-----
         """
         PO = minimize(
             calculate_chi2, list(x0), method= 'Powell', 
-            bounds=PSystem.hypercube, #PSystem.bounds,  # hypercube
+            #bounds=PSystem.hypercube, #PSystem.bounds,  # hypercube
             options={'maxiter':15000, 'maxfev':15000, 
                      'xtol':0.000001, 'ftol':0.1, 'disp':False, 'adaptive':True},
             args=(PSystem,))
