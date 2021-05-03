@@ -48,16 +48,17 @@ print(PS)
 # in json format
 PS.save_json
 
-# Running optimizers. Increase the number of solutions to reach
-optim = nau.Optimizers(PS, nsols=21, cores=7)
 
+# Running optimizers. Increase the number of solutions to reach
+optim = nau.Optimizers(PS, nsols=80, cores=8)
 opt_solutions = optim.run()
+
 
 # Running the MCMC. Try increasing the number of iterations, walkers or temperatures
 resmc = nau.MCMC(PS,
                 tmax=100,    # Maximum temperature in ladder (see ptemcee documentation)
-                itmax=500,   # Maximum number of iterations      
-                intra_steps=10,   # thinning factor
+                itmax=5000,   # Maximum number of iterations      
+                intra_steps=20,   # thinning factor
                 cores=7,   # Cores to run in parallel
                 opt_data=opt_solutions,  # Solutions from optimizers
                 distribution='ladder',  # A strategy to initialize walkers
