@@ -21,7 +21,8 @@ __all__ = ["Optimizers"]
 @dataclass
 class Optimizers:
     """Simulations based on a sequence of minimization algorithms
-
+        Differential Evolution -> Powell ->  Nelder-Mead
+    
     Parameters
     ----------
     PSystem : 
@@ -44,8 +45,8 @@ class Optimizers:
 
 
     @staticmethod
-    def _differential_evolution_nelder_mead(PSystem, base_name, indi=0):
-        """Base function to run the sequence of minimization algorithms
+    def DE_PW_NM(PSystem, base_name, indi=0):
+        """Base function to run the sequence of minimization algorithms:
 
         Parameters
         ----------
@@ -67,7 +68,6 @@ class Optimizers:
         
         base_name_cube, base_name_phys = base_name
         
-        # TODO: Decide wheter DE is replaced by agapy
         """ 
                         -----Differential Evolution----- 
         """
@@ -77,12 +77,12 @@ class Optimizers:
         DE = differential_evolution( 
                 calculate_chi2, PSystem.hypercube, #PSystem.bounds,  # hypercube
                 disp=False, seed=np.random.seed(),
-                popsize=100, maxiter=5, polish=False,
-                mutation=(1.5,1.9), recombination=0.2,
+                popsize=30, maxiter=1, polish=False,
+                mutation=(1.2,1.7), recombination=0.6,
                 args= (PSystem,))
         x0 = DE.x
         f0 = DE.fun
-
+        
         # Reduce the boundaries after DE such that PO and NM explore a smaller 
         # parameter space. It would help to avoid getting solutions stucked 
         # in the current boundaries. Modify momentarily the hypercube 
@@ -94,8 +94,8 @@ class Optimizers:
         PO = minimize(
             calculate_chi2, list(x0), method= 'Powell', 
             #bounds=PSystem.hypercube, #PSystem.bounds,  # Unnecessary in recent scipy versions
-            options={'maxiter':15000, 'maxfev':15000, 
-                     'xtol':0.000001, 'ftol':0.1, 'disp':False, 'adaptive':True},
+            options={'maxiter':12000, 'maxfev':12000, 
+                     'xtol':0.001, 'ftol':1, 'disp':False},
             args=(PSystem,))
         x1 = PO.x
         f1 = PO.fun
@@ -106,7 +106,7 @@ class Optimizers:
         NM = minimize(
             calculate_chi2, list(x1), method= 'Nelder-Mead', 
             options={'maxiter':15000, 'maxfev':15000,
-                     'xatol':0.000001, 'fatol':0.1, 'disp':False, 'adaptive':True},
+                     'xatol':0.0001, 'fatol':1, 'disp':False, 'adaptive':True},
             args=(PSystem,))
         x2 = NM.x
         f2 = NM.fun
@@ -138,7 +138,6 @@ class Optimizers:
         return [f2 , x2_cube, x2_phys]
 
 
-    #@classmethod
     def run(self):
         """Call this function to run the optimizers
 
@@ -182,8 +181,8 @@ class Optimizers:
         with warnings.catch_warnings(record=True) as w: 
             warnings.simplefilter("always")
 
-            pool = Pool(processes=self.cores)
-            results = [pool.apply_async(self._differential_evolution_nelder_mead,
+            pool = Pool(processes=self.cores, maxtasksperchild=1) # Helps to liberate memory!
+            results = [pool.apply_async(self.DE_PW_NM,
                         args=(self.PSystem, [base_name_cube,base_name_phys], i)) 
                         for i in range(self.nsols)]
             output = [p.get() for p in results]		

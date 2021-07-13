@@ -18,8 +18,6 @@ __all__ = ["Plots"]
 __doc__ = "Built-in figures to visualize the main results from nauyaca"
 
 
-# TODO: Include functions to visualize Optimizer results
-
 @dataclass
 class Plots:
     """A collection of customizable predefined figures.
@@ -48,7 +46,7 @@ class Plots:
         modifies the size of labels, lines and other elements of the plot. 
         Options are: 'notebook', 'paper', 'talk', 'poster'. See seaborn doc.
     sns_style : str, optional
-        The 'style' kwarg in seaborn.set(), by default 'darkgrid'. It changes
+        The 'style' kwarg in seaborn.set(), by default 'ticks'. It changes
         the color axes, grids, etc.
     sns_font : float, optional
         The 'font_scale' kwarg in seaborn.set(), by default 1. It scales the
@@ -130,7 +128,9 @@ class Plots:
 
 
         if flat_params != None:
-            # Is a list or array
+            # Here, flat_params must be in physical values!
+
+            # Is a unique list or array
             if isinstance(flat_params[0], float):
                 flat_params = list(flat_params)  # convert to list
                 flat_params = self._check_dimensions(flat_params)
@@ -148,12 +148,13 @@ class Plots:
 
         elif self.hdf5_file != None:
             # Try to build flat_params from hdf5 and the attributes of this function
+            # Here, flat_params can be in the normalized or physical form.
 
             if mode.lower() == 'random':
                 #FIXME: There is a bug when random mode is active:
                 # Sometimes a random solution without enough data is selected,
                 # Producing KeyError
-                print("mode: random")
+                print("--> plotting random solutions")
 
                 r = get_mcmc_results(self.hdf5_file, keywords=['INDEX','CHAINS'])
                 index = int(r['INDEX'][0])
@@ -162,33 +163,45 @@ class Plots:
                 wk, it, _ = chains.shape 
                 del r 
 
+                # Random choice
                 wk_choice = np.random.randint(0,wk,nsols)
-
                 it_choice = np.random.randint(0,it,nsols)
 
-                cube_params = [ chains[w,i,:] for w,i in zip(wk_choice,it_choice) ]
-                flat_params = [cube_to_physical(self.PSystem, cp) for cp in cube_params]
-
+                rdm_params = [ list(chains[w,i,:]) for w,i in zip(wk_choice,it_choice) ]
+                #flat_params = [cube_to_physical(self.PSystem, cp) for cp in rdm_params]
 
             elif mode.lower() == 'best':
-                print('mode: best')
+                print('--> plotting best solutions')
                 # best_solutions comes from better to worse
                 best_solutions = extract_best_solutions(self.hdf5_file, 
                                                         write_file=False)
                 
-                cube_params = [list(bs[1]) for bs in best_solutions[:nsols] ]
-
-                flat_params = [cube_to_physical(self.PSystem, cp) for cp in cube_params]
+                rdm_params = [list(bs[1]) for bs in best_solutions[:nsols] ]
+                #flat_params = [cube_to_physical(self.PSystem, cp) for cp in rdm_params]
 
             else:                
                 raise SystemExit('Impossible to understand -mode- argument. '+\
                     "Valid options are: 'random', 'best' ") 
 
 
+            # Decide if it have to be converted to physical values
+            # Convert from  normalized to physical
+            if (np.array(rdm_params) >= 0.).all() and (np.array(rdm_params) <= 1.).all():
+                # Convert to physical values. It includes the constant parameters
+                flat_params = [cube_to_physical(self.PSystem, rp) for rp in rdm_params]
+
+            else:
+                # Insert the constant parameters
+                flat_params = []
+                for rp in rdm_params:
+                    for k, v in self.PSystem.constant_params.items():
+                        rp.insert(k,v) 
+                    flat_params.append(rp)
+                  
         else:
             # No data to plot. Just the observed TTVs.
             print('---> No solutions to plot')
-
+        
 
         # =====================================================================
         # BEGINS FIGURE
@@ -196,9 +209,9 @@ class Plots:
         # FIXME: There's a bug when the number of simulated transits doesn't 
         # coincide with the number of observations
         if nplots > 1:
-            _, axes = plt.subplots(figsize=size, nrows=nplots, ncols=1, sharex=True)
+            fig, axes = plt.subplots(figsize=size, nrows=nplots, ncols=1, sharex=True)
         else: 
-            _, axes = plt.subplots(figsize=size)
+            fig, axes = plt.subplots(figsize=size)
 
         # X limits defined from time span
         deltat = (self.PSystem.ftime - self.PSystem.t0) * 0.02
@@ -309,10 +322,10 @@ class Plots:
         plt.tight_layout()
         plt.subplots_adjust(top=0.95)
        
-        return 
+        return fig
 
 
-    def hist(self,  chains=None, titles=False, size=None):
+    def hist(self,  chains=None, titles=False, size=None, hist_kwargs={}):
         """Make histograms of the a posteriori distributions for each 
         planetary parameter
 
@@ -329,8 +342,10 @@ class Plots:
             A flag to specify whether medians and 1-sigma errors are plotted at
             the top of histograms, by default False
         size : tuple, optional
-            The figure size, by default None, in which case the sieze is 
+            The figure size, by default None, in which case the size is 
             automatically calculated
+        hist_kwargs: dict
+            A dictionary of keyword arguments to sns.distplot()
         """                
 
         if size is None:
@@ -357,6 +372,9 @@ class Plots:
             #burnin = int(self.burnin*index)
             #last_it = int(converge_time / intra_steps)
             #chains = chains[:,burnin:index+1,:]
+
+            # Convert from  normalized to physical
+            #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
         
         else:
             raise RuntimeError("No chains or hdf5 file specified")
@@ -366,33 +384,61 @@ class Plots:
         chains  = chains[:,burnin_:index+1,:]   
         
         # Convert from  normalized to physical
-        chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+        if (chains >= 0.).all() and (chains <= 1.).all():
+            # Convert to physical values. It includes the constant parameters
+            chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+            
+        else:
+            # chains are in physical values
+            if chains.shape[-1]==7*self.PSystem.npla:
+                # Dimensions are complet (including constants).
+                # No insertion needed
+                pass
+            else:
+                # Insert the constant parameters
+                for cp, val in self.PSystem.constant_params.items():
+                    chains = np.insert(chains, cp, val, axis=2)
+        ## Convert from  normalized to physical
+        #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
 
         # Figure
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
-        _, axes = plt.subplots(nrows=self.PSystem.npla, ncols=7, figsize=size)
+        fig, axes = plt.subplots(nrows=self.PSystem.npla, ncols=7, figsize=size)
+
+
 
         dim = 0
         for n in range(self.PSystem.npla):
             for p in range(7):
                 param_idx = (n*7) + p
 
-                # Write labels
+                # Write x labels
                 if n == self.PSystem.npla-1:
                     axes[n, p].set_xlabel(labels[p]+" "+units_latex[p], labelpad=10)
-                # Write planet names
-                if p == 0:
-                    planet_ID = [k for k,v in self.PSystem.planets_IDs.items() if v==n]
-                    axes[n, p].set_ylabel(planet_ID[0], )
 
-                # Plot histograms
+                # Plot histograms (no constant parameters)
                 if param_idx not in list(self.PSystem.constant_params.keys()):
-                    parameter = chains[:,:,dim].flatten()
-                    sns.distplot(parameter, kde=False, hist=True, 
-                                color=colors[p], ax=axes[n, p], bins=20)
-                    low, med, up = np.percentile(parameter, [16,50,84])
                     
+                    parameter = chains[:,:,dim].flatten()
+                    
+                    # Manage kwargs for histograms
+                    default_hist_kwargs = {'kde': False, 'hist': True, 'color': self.colors[p],
+                                      'bins': 20}
+                    default_hist_kwargs.update(hist_kwargs)
+                    # Plot
+                    sns.distplot(parameter, ax=axes[n, p], **default_hist_kwargs)
+
+                    axes[n, p].set_yticks([])
+                    axes[n, p].set_ylabel("")
+
+                    low, med, up = np.percentile(parameter, [16,50,84])
+
+                    if p == 0:
+                        # Write planet names
+                        planet_ID = [k for k,v in self.PSystem.planets_IDs.items() if v==n]
+                        axes[n, p].set_ylabel(planet_ID[0])
+
                     if p == 1: 
                         # For period increase decimals
                         tit = r"$\mathrm{ %s ^{+%s}_{-%s} }$" % (round(med,5),
@@ -410,20 +456,24 @@ class Plots:
                     if titles:
                         axes[n, p].set_title(tit)
                     
-                    axes[n, p].set_yticks([])
+
                     dim += 1
                 
-                # Write in title the constant values
+                # Constant parameters
                 else:
                     if titles:
                         axes[n, p].set_title("{}".format(self.PSystem.constant_params[param_idx]))
                     axes[n, p].set_yticks([])
+                    # Change the xticks:
+                    axes[n, p].set_xlim(-1,1)
+                    axes[n, p].set_xticks([0])
+                    axes[n, p].set_xticklabels([f'{self.PSystem.constant_params[param_idx]}' ])
                     dim += 1
                 
         plt.tight_layout()
         plt.subplots_adjust(wspace=0.15, hspace=0.35)
         
-        return
+        return fig
 
 
     def trace_plot(self, chains=None, plot_means=False, thin=1, size=None):
@@ -452,7 +502,10 @@ class Plots:
 
         xlabel = 'Iteration / intra_steps '
         if chains is not None:
-            index = chains[::int(thin),:,:].shape[1] # The length of the chain
+            #index = chains[::int(thin),:,:].shape[1] # The length of the chains
+            assert(len(chains.shape) == 3), "Shape for chains should be: (walkers,steps,ndim)"+\
+                f" instead of {chains.shape}"
+            nwalkers,  index, _ = chains.shape
 
         elif self.hdf5_file:
             # Extract chains from hdf5 file
@@ -460,22 +513,42 @@ class Plots:
             index = f['INDEX'].value[0]
             # shape for chains is: (temps,walkers,steps,dim)
             chains = f['CHAINS'].value[self.temperature,::int(thin),:index+1,:]
-            total_walkers = chains.shape[0]
+            #total_walkers = chains.shape[0]
+            nwalkers = f['NWALKERS'][0]
             intra_steps = f['INTRA_STEPS'].value[0]
             f.close()
 
             xlabel = f'Iteration / {intra_steps} '
             ##
-            chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(total_walkers) ])
+            #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(total_walkers) ])
             ##
         else:
             raise RuntimeError("No chains or hdf5 file specified")
+
+        # No burnin is required
+
+        # Convert from  normalized to physical
+        if (chains >= 0.).all() and (chains <= 1.).all():
+            # Convert to physical values. It includes the constant parameters
+            chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+
+        else:
+            # chains are in physical values
+            if chains.shape[-1]==7*self.PSystem.npla:
+                # Dimensions are complet (including constants).
+                # No insertion needed
+                pass
+            else:
+                # Insert the constant parameters
+                for cp, val in self.PSystem.constant_params.items():
+                    chains = np.insert(chains, cp, val, axis=2)
+
 
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
         nrows = self.PSystem.npla*7 - len(self.PSystem.constant_params)
         
-        _, axes = plt.subplots(nrows=nrows, ncols=1, figsize=size, sharex=True)
+        fig, axes = plt.subplots(nrows=nrows, ncols=1, figsize=size, sharex=True)
 
         dim = 0
         for pla in range(self.PSystem.npla):
@@ -485,7 +558,7 @@ class Plots:
                 if param_idx not in list(self.PSystem.constant_params.keys()):
 
                     axes[dim].plot( chains[:,:,param_idx].T, 
-                            color=colors[param], alpha=0.1)
+                            color=self.colors[param], alpha=0.1)
 
                     axes[dim].set_ylabel(labels[param]+str(pla+1)+ "\n" + 
                                                 units_latex[param], 
@@ -499,14 +572,14 @@ class Plots:
 
         axes[dim-1].set_xlabel(xlabel)
 
-        return
+        return fig
 
 
     def corner_plot(self, chains=None, color='#0880DE',titles=False, corner_kwargs={}):
         """A corner plot to visualize possible correlation between parameters
 
         This function uses the corner.py package. If you use it in your research,
-        cite the propper attribution available at:
+        cite the proper attribution available at:
         https://corner.readthedocs.io/en/latest/index.html
 
         Parameters
@@ -531,28 +604,46 @@ class Plots:
         if chains is not None:
             assert(len(chains.shape) == 3), "Shape for chains should be: (walkers,steps,ndim)"+\
                 f" instead of {chains.shape}"
+            nwalkers,  index, _ = chains.shape
 
         elif self.hdf5_file:
             f = h5py.File(self.hdf5_file, 'r')
             index = f['INDEX'].value[0]
-            intra_steps = f['INTRA_STEPS'].value[0]
-            converge_time = f['ITER_LAST'].value[0]
-            chains = f['CHAINS'].value[:,:,:index+1,:]
+            #intra_steps = f['INTRA_STEPS'].value[0]
+            #converge_time = f['ITER_LAST'].value[0]
+            chains = f['CHAINS'].value[self.temperature,:,:index+1,:]
             nwalkers= f['NWALKERS'].value[0]
             f.close()
 
-            burnin = int(self.burnin*index)
-            last_it = int(converge_time / intra_steps)
-            
-            chains = chains[0,:,burnin:last_it,:]
+            #burnin = int(self.burnin*index)
+            #last_it = int(converge_time / intra_steps)
+            #chains = chains[0,:,burnin:last_it,:]
             ##
-            chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+
+            #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
             # remove constant params
-            chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+            #chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
 
         else:
             raise RuntimeError("No chains or hdf5 file specified")
             
+        # burnin phase
+        burnin_ = int(self.burnin*(index) )
+        chains  = chains[:,burnin_:index+1,:]  
+
+        # Convert from  normalized to physical
+        if (chains >= 0.).all() and (chains <= 1.).all():
+            # Convert to physical values. It includes the constant parameters
+            chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+            # remove constant params
+            chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
+        else:
+            pass
+            # Insert the constant parameters
+            #for cp, val in self.PSystem.constant_params.items():
+            #    chains = np.insert(chains, cp, val, axis=2)
+
+
         nwalkers = chains.shape[0]
         steps = chains.shape[1]
         #
@@ -565,7 +656,7 @@ class Plots:
 
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
-        #
+        # Default kwargs for corner
         corner_corner_kwargs = {"quantiles": [0.16, 0.5, 0.84],
                                 "show_titles": titles,
                                 "title_kwargs": {"fontsize": 12},
@@ -581,7 +672,7 @@ class Plots:
 
         corner_corner_kwargs.update(corner_kwargs)
 
-        corner.corner(df,
+        fig = corner.corner(df,
                      **corner_corner_kwargs 
                     )
 
@@ -594,7 +685,7 @@ class Plots:
         hspace=0.#015
         )
         
-        return
+        return fig
 
 
     def monitor(self,size=(20,10)):
@@ -610,10 +701,10 @@ class Plots:
         """
 
         f = h5py.File(self.hdf5_file, 'r')
-        bestlogl = f['BESTLOGL'].value
+        bestlogpost = f['MAP'].value
         betas = f['BETAS'].value
         acc = f['ACC_FRAC0'].value
-        meanlogl = f['MEANLOGL'].value
+        meanlogpost = f['MEANLOGPOST'].value
         tau = f['AUTOCORR'].value
         conv = f['INTRA_STEPS'].value[0]
         index = f['INDEX'].value[0]
@@ -621,7 +712,7 @@ class Plots:
 
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
 
-        _, axes = plt.subplots(nrows=2, ncols=2, figsize=size, sharex=True)
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=size, sharex=True)
 
         # Temperatures
         axes[0,0].plot(1./betas)
@@ -635,9 +726,9 @@ class Plots:
         axes[0,1].set_ylabel("Accepted temperature swap fractions")
 
         # Loglikelihood
-        axes[1,0].plot(meanlogl[:index+1], label='Mean Loglikelihood')
-        axes[1,0].plot(bestlogl[:index+1], label='Maximum Loglikelihood')
-        axes[1,0].set_ylabel("Log likelihood")
+        axes[1,0].plot(meanlogpost[:index+1], label='Mean Log-posterior')
+        axes[1,0].plot(bestlogpost[:index+1], label='Maximum a posteriori')
+        axes[1,0].set_ylabel("Probability")
         axes[1,0].set_yscale("symlog")
         axes[1,0].set_xlabel(f"Steps/{conv}")
         axes[1,0].legend(loc='lower right')
@@ -649,7 +740,7 @@ class Plots:
 
         plt.subplots_adjust(wspace=0.15, hspace=0.05)
 
-        return
+        return fig
 
 
     def convergence(self,  chains=None, names=None, nchunks_gr=10, thinning=1,size=(20,10)):
@@ -699,7 +790,7 @@ class Plots:
             raise RuntimeError("No chains or hdf5 file specified")
 
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)        
-        _, axes = plt.subplots(nrows=2, ncols=1, figsize=size)
+        fig, axes = plt.subplots(nrows=2, ncols=1, figsize=size)
         symbols = {1:"o",2:"^",3:"x",4:"s",5:"P"}
         
 
@@ -750,7 +841,7 @@ class Plots:
         
         plt.subplots_adjust(hspace=0.2)
         
-        return
+        return fig
 
 
     @staticmethod
@@ -779,7 +870,7 @@ class Plots:
         if len(fp) == self.PSystem.npla*7 and len(self.PSystem.constant_params)!=0:
             # there are the correct number of dimensions, but should be more?
             
-            raise ValueError('Invalid values in flat_params. Pass just planetary parameters')
+            raise ValueError('Invalid values in flat_params. Pass only planetary parameters')
             
         elif len(fp) == self.PSystem.npla*7 and len(self.PSystem.constant_params)==0:
             # dimensions are correct

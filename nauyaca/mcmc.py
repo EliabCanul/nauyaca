@@ -114,13 +114,21 @@ class MCMC:
             self.p0 = init_walkers(self.PSystem,distribution=self.distribution,
                                     ntemps=self.ntemps, nwalkers=self.nwalkers)
         else:
-            raise NameError("No 'p0' have been encountered. Provide 'p0' or " +
-                            "define: 'opt_data', 'fbest', 'ntemps', " +
+            raise NameError("Not enough information to initialize MCMC.\n\n" + 
+                            "--> Provide an array using physical values through the 'p0' kwarg with shape (temperatures, walkers, dimensions)\n" +
+                            "or\n" +
+                            "--> Define: 'opt_data', 'fbest', 'ntemps', " +
                             "'nwalkers', and 'distribution' to initialize " +
                             "walkers from optimizers.")
         
         # Update ndim and nwalkers from p0 above
         self.ntemps, self.nwalkers, ndim_tmp = self.p0.shape
+
+        # p0 is normalized? Or is it physical?
+        if (self.p0 >= 0.).all() and (self.p0 <= 1.).all():
+            p0_norm = True
+        else:
+            p0_norm = False
 
         # Check for consistency in input parameters
         if self.nwalkers < 2 * self.PSystem.ndim:
@@ -171,8 +179,8 @@ class MCMC:
         
         # Default values in ptemcee, 
         # Do not change it at least you have read Vousden et al. (2016):
-        nu = 100. #/nwalkers 
-        t0 = 10000. #/nwalkers
+        _nu = 100. #/nwalkers 
+        _t0 = 10000. #/nwalkers
         a_scale = 10
 
         # RUN
@@ -181,22 +189,21 @@ class MCMC:
             sampler = pt.Sampler(
                                 nwalkers=self.nwalkers,
                                 dim=self.PSystem.ndim,
-                                logp=self._logp, 
+                                logp=self.logprior, 
                                 logl=log_likelihood_func,
                                 ntemps=self.ntemps,
                                 betas=self.betas,
-                                adaptation_lag = t0,
-                                adaptation_time=nu,
+                                adaptation_lag = _t0,
+                                adaptation_time=_nu,
                                 a=a_scale, 
                                 Tmax=self.tmax,
                                 pool=pool,
-                                loglargs=(self.PSystem,), 
+                                loglargs=(self.PSystem,p0_norm), 
                                 logpkwargs={'psystem':self.PSystem}
                                 )
 
             index = 0
             autocorr = np.empty( self.nsteps )
-            record_meanlogl = []
             
             # thin: The number of iterations to perform between saving the 
             # state to the internal chain.
@@ -205,11 +212,16 @@ class MCMC:
                                 thin=self.intra_steps, storechain=True, 
                                 adapt=True, swap_ratios=False)):
 
+                # s[0] = walkers position
+                # s[1] = log-posterior
+                # s[2] = log-likelihood
+
                 if (iteration+1) % self.intra_steps :
                     continue
-
+                
+                # Identify current maximum a posteriori (MAP)
                 max_value, max_index = max((x, (i, j))
-                                for i, row in enumerate(s[2][:])
+                                for i, row in enumerate(s[1][:]) #MAP is calculated over the posterior
                                 for j, x in enumerate(row))
 
                 # get_autocorr_time, returns a matrix of autocorrelation 
@@ -230,26 +242,27 @@ class MCMC:
 
                 xbest = s[0][max_index[0]][max_index[1]]
 
-                #current_meanposterior = np.mean(s[1][0][:])
+                current_meanposterior = np.mean(s[1][0][:])
                 current_meanlogl = np.mean(s[2][0][:])
-                record_meanlogl.append(current_meanlogl)
-                std_meanlogl = np.std(record_meanlogl[int(index/2):])
+                std_meanlogp = np.std(s[1][0][:]) 
 
                 # Output in terminal
                 if self.verbose:
                     print("--------- Iteration: ", iteration + 1)
-                    print(" Mean tau:", round(mean_tau, 3))
+                    print(" Mean tau Temp 0:", round(mean_tau, 3))
                     print(" Accepted swap fraction in Temp 0: ", round(swap[0],3))
                     print(" Mean acceptance fraction Temp 0: ", round(np.mean(acc0),3))
-                    print(" Mean likelihood: ", round(current_meanlogl, 6))
-                    print(" Maximum likelihood: ", max_index,  round(max_value,6))
-                    print(" Current mean likelihood dispersion: ", round(std_meanlogl, 6))
-                    autocorr[index] = mean_tau
+                    print(" Mean log-likelihood: ", round(current_meanlogl, 3))
+                    print(" Mean log-posterior:  ", round(current_meanposterior, 3))
+                    print(" Current log-posterior dispersion: ", round(std_meanlogp, 3))
+                    print(" Current MAP: ", max_index,  round(max_value,3))
+                
+                autocorr[index] = mean_tau
                 
                 # Save data in hdf5 File
-                    
                 # shape for chains is: (temps,walkers,steps,dim)
                 # It's worth saving temperatures others than 0???
+                ta = time.time()  # Monitor the time wasted in saving..
                 self._save_mcmc(self.hdf5_filename, 
                                 sampler.chain[:,:,index,:], 
                                 xbest, 
@@ -260,7 +273,10 @@ class MCMC:
                                 swap, 
                                 max_index, 
                                 iteration, 
-                                current_meanlogl)
+                                current_meanposterior)
+                                #current_meanlogl)
+                if self.verbose:
+                    print(f' Saving time: {(time.time() - ta) :.5f} sec')
 
                 """
                                 CONVERGENCE CRITERIA
@@ -324,9 +340,9 @@ class MCMC:
             # Save the best solution per iteration
             NCD('BESTSOLS', (nsteps, PSystem.ndim,), dtype='f8',  
                         compression="gzip", compression_opts=4)
-            NCD('BESTLOGL', (nsteps,), dtype='f8', 
+            NCD('MAP', (nsteps,), dtype='f8', 
                         compression="gzip", compression_opts=4)
-            NCD('MEANLOGL', (nsteps,), dtype='f8', 
+            NCD('MEANLOGPOST', (nsteps,), dtype='f8', 
                         compression="gzip", compression_opts=4)
 
             # Constants
@@ -358,10 +374,9 @@ class MCMC:
 
     @staticmethod
     def _save_mcmc(hdf5_filename, current_sampler_chain, xbest, sampler_betas, autocorr, 
-                   index, max_value, swap, max_index, iteration, meanlogl):
+                   index, max_value, swap, max_index, iteration, meanlogpost):
         """A help function to save the current state of the MCMC run"""
         
-        ta = time.time()  # Monitor the time wasted in saving..
         with h5py.File(hdf5_filename, 'r+') as file:
             # shape for chains is: (temps,walkers,steps,dim)
             file['CHAINS'][:,:,index,:] = current_sampler_chain
@@ -372,10 +387,9 @@ class MCMC:
             file['ITER_LAST'][:] = iteration + 1
             # Best set of parameters in the current iteration
             file['BESTSOLS'][index,:] = xbest
-            # Chi2 of that best set of parameters
-            file['BESTLOGL'][index] = max_value
-            file['MEANLOGL'][index] = meanlogl
-        print(f' Saving time: {(time.time() - ta) :.5f} sec')
+            # Monitor of the maximum a posteriori and log-posterior
+            file['MAP'][index] = max_value
+            file['MEANLOGPOST'][index] = meanlogpost
 
         return
 
@@ -481,7 +495,8 @@ class MCMC:
 
 
     @staticmethod
-    def _logp(x, psystem=None):
+    def logprior(x, psystem=None):
         """The log prior function"""
 
-        return 0.0
+        #return 0.0
+        return 1.0

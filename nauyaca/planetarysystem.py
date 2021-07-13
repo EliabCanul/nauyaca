@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from collections import OrderedDict
 from .constants import col_names, units, Msun_to_Mearth, Rsun_to_AU, k_limit
 import numpy as np
+import warnings
 import pickle
 import json
 import copy
@@ -151,7 +152,7 @@ class PlanetarySystem:
             # Nuevo. Delete constant values in parameterized bounds
             del self._bounds_parameterized[index]
             # Nuevo
- 
+
         # Create a string with parameter names
         params_names = []
         for i in range(1, self.npla+1):
@@ -163,6 +164,15 @@ class PlanetarySystem:
             del params_names[index]
         params_names = "  ".join(params_names)
         self.params_names = params_names
+
+        # Ascending node of at least one Planet must be fixed
+        o_keys = list(self.constant_params.keys())
+        cparams = [self.params_names_all.split()[o_k] for o_k in o_keys]
+        assert sum([cp.startswith("ascending_node") for cp in cparams]) > 0, "The"\
+            " ascending node of at least one planet must be fixed to avoid degenerated solutions."\
+            " \nSet the lower and upper boundaries of a Planet as equal,"\
+            " for example, Planet1.ascending_node = [90,90] "
+
 
         # Number of dimensions
         self.ndim = len(self.bounds)
@@ -192,7 +202,9 @@ class PlanetarySystem:
         # Make available rstar in AU         
         self.rstarAU = self.rstar*Rsun_to_AU 
 
-        # Create an hypercube with bounds 0-1
+        # Create an hypercube with bounds 0-1.
+        # hypercube is used to rescale the different parameters to be dimensionless
+        # it's useful to stablish convergence in optimizers
         self.hypercube = [[0., 1.]]*self.ndim 
 
         ##self.bi, self.bf = np.array(self._bounds_parameterized).T 
@@ -340,11 +352,16 @@ class PlanetarySystem:
         return
 
 
-    @property
-    def save_pickle(self):
-        """Save the Planetary System object using pickle"""
+    def save_pickle(self,  path='./'):
+        """Save the Planetary System object using pickle
 
-        pickle_file = f'{self.system_name}.pkl'
+        Parameters
+        ----------
+        path : str, optional
+            A path to save the pickle file, by default './'
+        """
+
+        pickle_file = path+f'{self.system_name}.pkl'
         with open(pickle_file, 'wb') as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
         print(f"--> Pickle file {pickle_file} saved")
@@ -373,9 +390,14 @@ class PlanetarySystem:
         return pickle_object
 
 
-    @property
-    def save_json(self):
-        """Save the Planetary System object using json"""
+    def save_json(self, path='./'):
+        """Save the Planetary System object using json
+
+        Parameters
+        ----------
+        path : str, optional
+            A path to save the json file, by default './'
+        """
         
         # Serialize planet objects
         dct_planet_obj = {}
@@ -403,7 +425,7 @@ class PlanetarySystem:
             except:
                 pass
 
-        json_file = f'{self.system_name}.json'
+        json_file = path+f'{self.system_name}.json'
         with open(f'{json_file}', 'w') as outputfile:
             json.dump(dct_ps_attr, outputfile, indent=4)
         

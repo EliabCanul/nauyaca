@@ -46,7 +46,7 @@ units_latex = {0:r"$\mathrm{[M_{\oplus}]}$",
 
 # =======  DANGER ZONE!
 # Do not change these constants, at least that you are a contributor and you know
-# what are you doing ;-)
+# what you are doing ;-)
 
 # Percentage of stellar mass to set as upper mass limit
 k_limit = 0.01 

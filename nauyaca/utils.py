@@ -70,14 +70,12 @@ def run_TTVFast(flat_params, mstar, init_time=0., final_time=None, dt=None):
     signal = ttvfast.ttvfast(
             planets_list, stellar_mass=mstar, time=init_time, total=final_time,
             dt=dt, rv_times=None, input_flag=1)   
-    
-    SP = np.array(signal['positions'])
 
-    # -2.0 is indicative of empty data
-    mask = [SP[2] != -2]
-    
-    SP = np.array([ i[mask] for i in SP])
-    
+    SP = signal['positions']
+    sig2 = SP[2]
+    i = sig2.index(-2)
+    SP = np.array([s[:i] for s in SP])
+
     return SP
 
 
@@ -148,7 +146,7 @@ def calculate_ephemeris(PSystem, flat_params):
     """
 
     # Convert from hypercube data to physical
-    flat_params = cube_to_physical(PSystem, flat_params)
+    #flat_params = cube_to_physical(PSystem, flat_params)
 
     # Get 'positions' from signal in TTVFast
     signal_position = run_TTVFast(flat_params,  
@@ -207,7 +205,7 @@ def _chi2(observed, sigma, simulated, individual=False):
 
             except:
                 # Add a high constant each time a simulated transit 
-                # is not detected. There is any ohter better way?
+                # is not detected
                 chi2 += 1e+20
     
         chi2_tot += chi2
@@ -251,7 +249,11 @@ def calculate_chi2(flat_params, PSystem):
         return np.inf 
     else:
         pass
-    
+
+    # Convert from hypercube data to physical
+    flat_params = cube_to_physical(PSystem, flat_params)
+
+
     sim_times = calculate_ephemeris(PSystem, flat_params)
 
     chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times, individual=False)
@@ -333,7 +335,7 @@ def calculate_chi2_physical(flat_params, PSystem, individual=False,
         return chi2
 
 
-def log_likelihood_func(flat_params, PSystem):
+def log_likelihood_func(flat_params, PSystem, cube):
     """A function to calculate the Log Likelihood
 
     This function is used by the MCMC
@@ -358,12 +360,29 @@ def log_likelihood_func(flat_params, PSystem):
         The log likelihood of the current solution
     """    
 
-    # Verify that proposal is inside boundaries    
-    if False in intervals(PSystem.hypercube, flat_params):
-        return -np.inf
-    else:
-        pass
+    if cube:
+        # Verify that proposal is inside boundaries    
+        if False in intervals(PSystem.hypercube, flat_params):
+            return -np.inf
+        else:
+            pass
+        
+        # Convert from hypercube data to physical
+        flat_params = cube_to_physical(PSystem, flat_params)
     
+    else:
+        # Verify that proposal is inside boundaries    
+        if False in intervals(PSystem.bounds, flat_params):
+            return -np.inf
+        else:
+            pass
+
+        flat_params = list(flat_params)  
+        # Insert constants to make simulations
+        for k, v in PSystem.constant_params.items(): 
+            flat_params.insert(k, v)        
+
+
     sim_times = calculate_ephemeris(PSystem, flat_params)
 
     # Compute the log-likelihood
@@ -374,6 +393,7 @@ def log_likelihood_func(flat_params, PSystem):
     return  loglike 
 
 
+f = lambda x: x-360 if x>360 else (360+x if x<0 else x) 
 def cube_to_physical(PSystem, x):
     """A function to convert from normalized solutions to physicals
 
@@ -395,7 +415,6 @@ def cube_to_physical(PSystem, x):
         It includes the constant parameters.
     """
 
-    f = lambda x: x-360 if x>360 else (360+x if x<0 else x) 
     
     # Map from normalized to physicals
     x = np.array(PSystem.bi) + np.array(x)*(np.array(PSystem.bf) - np.array(PSystem.bi))
@@ -472,7 +491,7 @@ def init_walkers(PSystem, distribution=None, opt_data=None, ntemps=None,
         return _func_uniform(PSystem, ntemps=ntemps, nwalkers=nwalkers)
 
     if opt_data is not None:
-        assert(0.0 < fbest <= 1.0), "fbest must be between 0 and 1!"
+        assert(0.0 < fbest <= 1.0), "fbest must be between 0 and 1"
 
         if distribution.lower() in ("gaussian", "picked", "ladder"): 
             
@@ -526,7 +545,7 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
     assert((opt_data[:,1:]>=0.).all() and (opt_data[:,1:] <=1.0).all()), "Invalid opt_data. Provide 'cube' solutions"
 
     # Remove the solutions where chi2 have solutions => 1e+20
-    # since that value means that optimizers didn't find a solutions
+    # since that value means that optimizers didn't find correct solutions
     opt_data = opt_data[opt_data[:,0] <1e+20]
     opt_data = sorted(opt_data, key=lambda x: x[0])
     original_len = len(opt_data)
@@ -542,20 +561,41 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
         print(f"    {len(opt_data)} of {original_len} solutions taken")
 
         n_sols = len(params)
-
+        """
         for _ in range(ntemps*nwalkers):
             current_index = np.random.choice(range(n_sols))
             current_solution =  params[current_index].tolist()
             
             perturbed_solution = []
-            rdmu_b = np.random.uniform(0.0, 0.1)
+            #rdmu_b = np.random.uniform(0.0, 0.1)
 
             for par_idx, param in enumerate(current_solution):
-                linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
-                lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b                
-                delta = np.random.uniform(param-linf, param+lsup)
+                #linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
+                #lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b                
+                #delta = np.random.uniform(param-linf, param+lsup)
 
+                delta = np.random.normal(param, 0.01)
                 perturbed_solution.append(delta)
+            POP0.append(perturbed_solution)
+        """
+        for _ in range(ntemps*nwalkers):
+            current_index = np.random.choice(range(n_sols))
+            current_solution =  params[current_index].tolist()
+            
+            perturbed_solution = []
+            #rdmu_b = np.random.uniform(0.0, 0.1)
+
+            for par_idx, param in enumerate(current_solution):
+                #linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
+                #lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b                
+                #delta = np.random.uniform(param-linf, param+lsup)
+                while True:
+                    delta = np.random.normal(param, 0.01)
+                    if 0.<= delta <= 1.:
+                        perturbed_solution.append(delta)
+                        break
+                    else:
+                        pass
             POP0.append(perturbed_solution)
         POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(PSystem.bounds))
     
@@ -588,11 +628,10 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
 
 
     if distribution.lower() == 'ladder':
-        f = lambda x: x[1:]
-        parameters = list(map(f, opt_data ))
+        parameters = [x[1:] for x in opt_data] # = list(map(f, opt_data )) 
         print(f"    {len(opt_data)} of {original_len} solutions taken")
 
-
+        """
         for pt in range(ntemps):  # Iterates over chunks (temperatures)
             #
             parameters_sep = list(_chunks(parameters, ntemps-pt)) 
@@ -621,10 +660,45 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
                     perturbed_solution.append(delta)   
             
                 POP0.append(perturbed_solution)
+        """
+        parameters_sep = list(_chunks(parameters, ntemps))
+        for pt in range(ntemps):  # Iterates over chunks (temperatures)
+            #
+            # Flat the lists and join
+            par_sep = sum(parameters_sep[:pt+1], [])     
+            
+            n_sols=len(par_sep)
+            par_sep_T = list(np.array(par_sep).T)
+            
+            par_sep_2 = np.array(par_sep_T).T
+            
+            # choose randomly an index in the chunk
+            current_index = np.random.choice(range(n_sols), nwalkers ) 
+            
+            for i in current_index:
+                current_solution = par_sep_2[i]
+                
+                perturbed_solution = []
+                #rdmu_b = np.random.uniform(0.0, 0.1)
+                
+                for par_idx, param in enumerate(current_solution):
+                    #linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
+                    #lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b
+                    #delta = np.random.uniform(param-linf, param+lsup)
+                    while True:
+                        delta = np.random.normal(param, 0.01)
+                        if 0. <= delta <= 1.:
+                            perturbed_solution.append(delta)
+                            break
+                        else:
+                            pass
+            
+                POP0.append(perturbed_solution)
         POP0 = np.array(POP0).reshape(ntemps, nwalkers, len(PSystem.hypercube))  
 
 
     return POP0
+    
 
 
 def _chunks(l, n):
@@ -698,18 +772,36 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
 
     burnin = int(burnin*index)
     # shape for chains is: (temps,walkers,steps,dim)
-    # Only for temperature 0
+    # For security, it only analize temperature 0, the main temperature
     chains = f['CHAINS'].value[0,:,burnin:index+1:fthinning,:] 
 
     f.close()
     
-    best = zip(maxc2, bs)
+    # Convert to physical?
+    if (chains >= 0.).all() and (chains <= 1.).all():
+        # Convert to physical values and remove the constant parameters
+        chains = np.array([[cube_to_physical(PSystem, x) for x in chains[w,:,:]] for w in range(nw) ])
+        chains = np.array([[_remove_constants(PSystem, x) for x in chains[w,:,:]] for w in range(nw) ])
+    else:
+        pass
 
+    # Best results
+    best = zip(maxc2, bs)
     # reverse=False: ascending order
     sort_res = sorted(list(best), key=lambda j: j[0], reverse=False)
     best_logl, best_sol = sort_res[-1][0], sort_res[-1][1]
 
-    best_sol = cube_to_physical(PSystem, best_sol)
+    # Convert best solutions to physical values?
+    if (best_sol >=0.).all() and (best_sol<=1.).all():
+        # It includes constant parameters
+        best_sol = cube_to_physical(PSystem, best_sol)
+    else:
+        # It is physical and insert constants
+        best_sol = list(best_sol)
+        for k, v in PSystem.constant_params.items(): 
+            best_sol.insert(k, v)
+        
+
 
     if verbose:
         print("--> Planetary System: ", syst_name)
@@ -718,7 +810,7 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
         print("    Number of planets: ", npla)
         print("--> Planets:")
         for p, n in PSystem.planets_IDs.items():
-            print(f"       Planet{n+1}: {p}")
+            print(f"       Planet {n+1}: {p}")
         print("    ")
         print("--------------------------")
         print("--> MCMC parameters")
@@ -733,19 +825,14 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
         print("--> Results in File:  ", hdf5_file)
         print("--> Reference epoch of the solutions: ", ref_epoch, " [JD]")
         print("--> Best solution in MCMC")
-        print("    Logl: ", round(best_logl,5))
-        print("          "+" ".join([cn for cn in col_names]))
+        print("      Logl: ", round(best_logl,5))
+        print("               "+" ".join([cn for cn in col_names]))
         for i in range(npla):
-            print(f"Planet{i+1}: " + "   ".join( str(round(k,4)) for k in np.array_split(best_sol, npla)[i]) )
+            print(f"      Planet {i+1}: " + "   ".join( str(round(k,4)) for k in np.array_split(best_sol, npla)[i]) )
         print("--------------------------")    
         print("--> MCMC medians and 1-sigma errors")
 
     posteriors = {}
-
-    # Convert normalized chains to physical values
-    chains = np.array([[cube_to_physical(PSystem, x) for x in chains[w,:,:]] for w in range(nw) ])
-    chains = np.array([[_remove_constants(PSystem, x) for x in chains[w,:,:]] for w in range(nw) ])
-    #
 
     for i, name in enumerate(list(colnames.split())):
         parameter = chains[:,:,i].flatten()
@@ -759,18 +846,18 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
             if i == 1: 
                 # For period increase decimals
                 tit = "%s ^{+%s}_{-%s} " % (round(med,5),
-                                                round(up-med,5),
-                                                round(med-low,5))
+                                                round(up-med,6),
+                                                round(med-low,6))
             elif i == 2:
                 # For eccentricity increase decimals
                 tit = "%s ^{+%s}_{-%s}" % (round(med,3),
-                                                round(up-med,3),
-                                                round(med-low,3))
+                                                round(up-med,5),
+                                                round(med-low,5))
             else:
                 tit = "%s ^{+%s}_{-%s}" % (round(med,2),
-                                                round(up-med,2),
-                                                round(med-low,2))
-            #ndim += 1
+                                                round(up-med,3),
+                                                round(med-low,3))
+
             print("   %15s      %20s" % (name, tit))
     
     if get_posteriors:
