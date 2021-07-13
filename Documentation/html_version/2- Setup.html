@@ -13138,14 +13138,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Let's import the nauyaca, given the alias: nau</p>
+<p>Let's import the Nauyaca, given the alias: nau</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">nauyaca</span> <span class="k">as</span> <span class="nn">nau</span>
@@ -13173,7 +13173,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">SetPlanet</span><span class="p">(</span><span class="s2">&quot;Planet-b&quot;</span><span class="p">)</span>
@@ -13210,7 +13210,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">ttvs_data</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.941979</span><span class="p">,</span> <span class="mf">0.000144</span><span class="p">,</span> <span class="mf">0.000144</span><span class="p">],</span>
@@ -13244,7 +13244,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">!</span> head -8  ./inputs/planetb_ttvs.dat
@@ -13298,7 +13298,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Note that the data are in the -inputs- subdirectory</span>
@@ -13320,7 +13320,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">ttvs_data</span>
@@ -13336,7 +13336,7 @@ div#notebook {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[6]:</div>
+    <div class="prompt output_prompt">Out[12]:</div>
 
 
 
@@ -13390,7 +13390,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Fine! at this point we have a Planet with transit data. Now, we will see how to say to Nauyaca where to search in the parameter space of our planet...</p>
+<p>Fine! at this point we have a Planet with transit data. Now, we will see how to say to Nauyaca where to look in the parameter space of our planet...</p>
 
 </div>
 </div>
@@ -13423,14 +13423,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>Default boundaries:</strong> In many cases nothing is known about one or more parameters. In that case a $default$ set of boundaries will be established. Let's see which are these defaul boundaries by calling the physical limits established inside the module -constants- in Nauyaca:</p>
+<p><strong>Default boundaries:</strong> In many cases nothing is known about one or more parameters. In that case a set of $default$ boundaries will be established. Let's see which are these default boundaries by calling the physical limits established inside the module -constants- in Nauyaca:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">nau</span><span class="o">.</span><span class="n">constants</span><span class="o">.</span><span class="n">physical_bounds</span>
@@ -13446,7 +13446,7 @@ div#notebook {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[7]:</div>
+    <div class="prompt output_prompt">Out[13]:</div>
 
 
 
@@ -13480,7 +13480,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span>                                      <span class="c1">#     LIMITS FOR:</span>
@@ -13531,7 +13531,7 @@ Planet : Planet-b
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>From here, we can notice of two things:</p>
-<p><strong>1.-</strong> There is a dialog from Nauyaca (starting with --&gt;) that say to us that the lower boundary of eccentricity have been set to 1e-06. Why is that? It is because we manually set the eccentricity lower limit to 0, but this value is lower than the <em>default</em> lower limit in eccentricity mentioned previously: 1e-06. Thus, Nauyaca prevents of giving boundaries manually outside the default physical boundaries, which by design, have been thought to consider almost any kind of planets and orbits. In this case, the lower limit in eccentricity is small but different from zero in order to avoid getting undefined argument of periastron.</p>
+<p><strong>1.-</strong> There is a dialog from Nauyaca (starting with --&gt;) saying to us that the lower boundary of eccentricity have been set to 1e-06. Why is that? It is because we manually set the eccentricity lower limit to 0, but this value is lower than the <em>default</em> lower limit in eccentricity mentioned previously: 1e-06. Thus, Nauyaca prevents of giving boundaries manually outside the default physical boundaries, which by design, have been thought to consider almost any kind of planets and orbits. In this case, the lower limit in eccentricity is small but different from zero in order to avoid getting undefined argument of periastron.</p>
 <p>A similar thing would happens, for example, if we set a negative lower limit in masses (which have not physical sense). In this case, the negative limit will be changed to 0.0123032 (M_earth).</p>
 <p><strong>2.-</strong> We did not establish boundaries for argument of periastron, mean anomaly or ascending node, and thus the default boundaries arise.</p>
 
@@ -13542,16 +13542,16 @@ Planet : Planet-b
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>Constant parameters</strong></p>
-<p>To keep a planetary parameter constant set the lower and upper boundaries equal, just as the inclination for Planetb!</p>
-<p>By construction in the coordinate system, the ascending node of $at$ $least$ $one$ $planet$ in the system must be fixed.
-Let's keep fixed this angle to the correct ascending node of "Planet-b" (true values can be seen in the file inputs/true_solution), by setting equal values in the lower and upper boundaries:</p>
+<p>To keep a planetary parameter constant, set the lower and upper boundaries as equal, just as the inclination for Planetb!</p>
+<p>By construction in the coordinate system, <strong>the ascending node of at least one planet in the system must be fixed</strong>.
+Let's keep fixed this angle to the correct ascending node of "Planet-b" (true values can be seen in the file /inputs/true_solution), by setting equal values in the lower and upper boundaries:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">Planetb</span><span class="o">.</span><span class="n">ascending_node</span> <span class="o">=</span> <span class="p">[</span><span class="mf">88.36</span><span class="p">,</span> <span class="mf">88.36</span><span class="p">]</span>  <span class="c1"># Ascending node [deg]</span>
@@ -13581,7 +13581,7 @@ Let's create another planet object and do the same as before:</p>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Planet-c</span>
@@ -13598,7 +13598,7 @@ Let's create another planet object and do the same as before:</p>
 
 <span class="c1"># Let&#39;s consider just prograde solutions, i.e, +/-90° around </span>
 <span class="c1"># ascending node of first planet</span>
-<span class="n">Planetc</span><span class="o">.</span><span class="n">ascending_node</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">180.</span><span class="p">]</span>  
+<span class="n">Planetc</span><span class="o">.</span><span class="n">ascending_node</span><span class="o">=</span><span class="p">[</span><span class="mi">70</span><span class="p">,</span> <span class="mf">110.</span><span class="p">]</span>  <span class="c1"># Considering coplanar orbits</span>
 
 
 <span class="nb">print</span><span class="p">(</span><span class="n">Planetc</span><span class="p">)</span>
@@ -13629,7 +13629,7 @@ Planet : Planet-c
     inclination: (90, 90)  [deg]
     argument: (0.0, 360)  [deg]
     mean_anomaly: (0.0, 360)  [deg]
-    ascending_node: (0.0, 180.0)  [deg]
+    ascending_node: (70, 110.0)  [deg]
   TTVs: True
 </pre>
 </div>
@@ -13657,14 +13657,14 @@ Planet : Planet-c
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Once we have defined our planets, we can construct a Planetary System simply defining a system name, and stellar mass and radius (in Msun and Rsun units)</p>
+<p>Once we have defined our planets, we can construct a Planetary System simply by defining a system name, and stellar mass and radius (in Msun and Rsun units)</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Let&#39;s call our system: &quot;SystemX&quot;</span>
@@ -13687,7 +13687,7 @@ Planet : Planet-c
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># adding planets</span>
@@ -13728,7 +13728,7 @@ Planet : Planet-c
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">PS</span><span class="p">)</span>  <span class="c1"># print a summary of the Planetary System</span>
@@ -13777,7 +13777,7 @@ Planet2: Planet-c
     inclination: (90, 90)  [deg]
     argument: (0.0, 360)  [deg]
     mean_anomaly: (0.0, 360)  [deg]
-    ascending_node: (0.0, 180.0)  [deg]
+    ascending_node: (70, 110.0)  [deg]
   TTVs: True
 
 Simulation attributes: 
@@ -13803,13 +13803,13 @@ Timestep of the simulations (dt): 0.17847710000000017 [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">nauplot</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">Plots</span><span class="p">(</span><span class="n">PS</span><span class="p">)</span>  <span class="c1"># Call the module by passing the Planetary System object</span>
 
 <span class="c1"># Plot TTVs!</span>
-<span class="n">nauplot</span><span class="o">.</span><span class="n">TTVs</span><span class="p">(</span><span class="n">residuals</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># Don&#39;t make space for residuals</span>
+<span class="n">nauplot</span><span class="o">.</span><span class="n">TTVs</span><span class="p">(</span><span class="n">residuals</span><span class="o">=</span><span class="kc">False</span><span class="p">);</span> <span class="c1"># Don&#39;t make space for residuals</span>
 </pre></div>
 
     </div>
@@ -13853,14 +13853,6 @@ Timestep of the simulations (dt): 0.17847710000000017 [days]
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Cool, isn't?</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="2.3-Preparing-for-simulations">2.3 Preparing for simulations<a class="anchor-link" href="#2.3-Preparing-for-simulations">&#182;</a></h2>
 </div>
 </div>
@@ -13874,7 +13866,7 @@ Timestep of the simulations (dt): 0.17847710000000017 [days]
 </li>
 <li><p><strong>ftime:</strong> It defines the maximum time of the simulations. By default, it is calculated automatically by rounding up the greatest central time found in the planet ephemeris. If you define a lower value than the calculated by default, then, all the central transit times greater than this new  number will be discarted (for all the planets) and the fitting will be performed until this new final time is reached in the simulations.</p>
 </li>
-<li><p><strong>dt:</strong> This is the timestep of the simulations. By default, it is calculated by dividing the period of the inner planet over 30, which represent the 3.33% of the orbital period of the inner planet. Note that a timestep lower than 5% of period corresponding to the internal planet is suggested to reach a good accuracy in the simulations</p>
+<li><p><strong>dt:</strong> This is the timestep of the simulations. By default, it is calculated by dividing the period of the inner planet over 30, which represent the 3.33% of the orbital period of the inner planet. Note that a timestep lower than 5% of internal planet period is suggested to reach a good accuracy in the simulations (Deck et al., 2014)</p>
 </li>
 </ul>
 <p>Let's see these attributes automatically calculated in our system:</p>
@@ -13884,7 +13876,7 @@ Timestep of the simulations (dt): 0.17847710000000017 [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;t0: </span><span class="si">{PS.t0}</span><span class="s2">  [days]&quot;</span><span class="p">)</span>
@@ -13927,7 +13919,7 @@ dt: 0.17847710000000017  [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[24]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Setting the simulation attributes</span>
@@ -13981,7 +13973,7 @@ dt: 0.17  [days]
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Once we have our Planetary System, it is very important to save the object. It can help us to avoid writting all the code above for defining Planets and the Planetary System itself, each time we want to work with it. It is also a good form to make it portable if you want to run another simulation in another computer in another time.</p>
+<p>Once we have our Planetary System, it is very important to save the object. It can help us to avoid writting all the code above to define Planets and the Planetary System again, each time we want to work with it. It is also a good form to make it portable if you want to run another simulation in another computer in another time.</p>
 <p>Nauyaca have currently two formats to save the Planetary System object:</p>
 <ul>
 <li><strong>pickle:</strong> </li>
@@ -14001,10 +13993,10 @@ dt: 0.17  [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="prompt input_prompt">In&nbsp;[26]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_pickle</span>  <span class="c1"># Save in pickle format</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_pickle</span><span class="p">()</span>  <span class="c1"># Save in pickle format</span>
 </pre></div>
 
     </div>
@@ -14021,7 +14013,7 @@ dt: 0.17  [days]
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>--&gt; Pickle file SystemX.pkl saved
+<pre>--&gt; Pickle file ./SystemX.pkl saved
 </pre>
 </div>
 </div>
@@ -14032,10 +14024,10 @@ dt: 0.17  [days]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[27]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_json</span>   <span class="c1"># Save in json format</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">PS</span><span class="o">.</span><span class="n">save_json</span><span class="p">()</span>   <span class="c1"># Save in json format</span>
 </pre></div>
 
     </div>
@@ -14052,7 +14044,7 @@ dt: 0.17  [days]
 
 
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>--&gt; JSON file SystemX.json saved
+<pre>--&gt; JSON file ./SystemX.json saved
 </pre>
 </div>
 </div>
@@ -14064,7 +14056,7 @@ dt: 0.17  [days]
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>which by default, will save with the name of the Planetary System object. These files are saved in the working directory.</p>
+<p>which by default, will be saved with the name of the Planetary System. These files are saved in the working directory.</p>
 
 </div>
 </div>

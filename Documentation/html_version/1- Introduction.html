@@ -13123,7 +13123,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>nauyaca: $Bothrops$ $asper$: (México; from Nahuatl nahui, four, and yacatl, nose; "four noses")</p>
+<p>nauyaca: $Bothrops\ asper$: (México; from Nahuatl nahui, four, and yacatl, nose; "four noses")</p>
 <p>a kind of pit viper from Central America.</p>
 
 </div>
@@ -13152,7 +13152,7 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Nauyaca is a python package exclusively adapted to find planetary masses and orbits of transiting planets, through the fitting of mid-transit times, from an N-body approach.</p>
 <p>The tool manages the communication with $\texttt{TTVFast}$ (Deck et al., 2014) and many minimization algorithms and a parallel-tempered MCMC ($\texttt{ptemcee}$; Vousden et al. 2015).</p>
-<p>To work correctly, Nauyaca requieres measured transit time ephemeris of the planet(s), composed by the number of the transit (starting from epoch zero at a given reference epoch T0), the central transit time, and the proper lower and upper errors. Additionally the stellar mass and radius are requiered. We'll see how to set these properties in Tutorial 2.</p>
+<p>To work correctly, Nauyaca requieres measured transit time ephemeris of the planet(s), composed by the number of the transit (starting from epoch zero at a given reference epoch $t_0$), the central transit time, and the proper lower and upper errors. Additionally the stellar mass and radius are requiered. We'll see how to set these properties in Tutorial 2.</p>
 <p>Nauyaca implements minimization algorithms, namely Differential Evolution, Powell and Nelder-Mead from $\texttt{scipy}$. These algorithms explore the parameter space searching for approximate solutions to the mid-transit times fitting. The results from this step can be used to initialize walkers in the MCMC but also to constrain the parameter space. Tutorial 3 is focused in explaining how to use the module Optimizers in Nauyaca.</p>
 <p>In Tutorial 4 we finally perform a Markov chain Monte Carlo method to fully explore the planetary parameter space. As a result, Nauyaca returns a posteriori distributions of the planetary orbital elements and masses. A set of predefined figures in Nauyaca allow to examine the performance and take decisions about the results.</p>
 
@@ -13161,7 +13161,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">nauyaca</span> <span class="k">as</span> <span class="nn">nau</span>
@@ -13175,14 +13175,14 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>We inspect the available modules inside nauyaca:</p>
+<p>Let's inspect the available modules inside Nauyaca:</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="n">nau</span><span class="o">.</span><span class="n">__all__</span>
@@ -13198,13 +13198,54 @@ div#notebook {
 
 <div class="output_area">
 
-    <div class="prompt output_prompt">Out[2]:</div>
+    <div class="prompt output_prompt">Out[3]:</div>
 
 
 
 
 <div class="output_text output_subarea output_execute_result">
 <pre>[&#39;SetPlanet&#39;, &#39;PlanetarySystem&#39;, &#39;Optimizers&#39;, &#39;MCMC&#39;, &#39;Plots&#39;]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>And the current version:</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">nau</span><span class="o">.</span><span class="n">__version__</span>
+</pre></div>
+
+    </div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area">
+
+    <div class="prompt output_prompt">Out[4]:</div>
+
+
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>&#39;1.0.0&#39;</pre>
 </div>
 
 </div>
@@ -13283,7 +13324,7 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Example:-Solving-for-a-two-planet-system">Example: Solving for a two-planet system<a class="anchor-link" href="#Example:-Solving-for-a-two-planet-system">&#182;</a></h3><p>Along this set of tutorials, we will solve the problem of a (synthetic) planetary system composed by two planets. Both of them have mid- transit times and we will try to invert the pathway, going from mid-transit times to planetary parameters. Just to know, the real planet parameters are in ./inputs/true_solution.</p>
+<h3 id="Example:-Solving-the-inversion-problem-of-a-two-planet-system">Example: Solving the inversion problem of a two-planet system<a class="anchor-link" href="#Example:-Solving-the-inversion-problem-of-a-two-planet-system">&#182;</a></h3><p>Along this set of tutorials, we will solve the problem of a (synthetic) planetary system composed by two planets. Both of them have mid-transit times and we will try to invert the pathway, going from mid-transit times to planetary parameters. Just to know, the real planet parameters are in ./inputs/true_solution.</p>
 <p>Let's see how to recover that planetary parameters!</p>
 
 </div>
@@ -13300,28 +13341,12 @@ div#notebook {
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Python 3.7 is required. Also, -pipenv- is requiered to manage the dependencies.
-If you do not have pipenv, install via: pip install pipenv or pip3 install pipenv</p>
-<h1 id="Installation">Installation<a class="anchor-link" href="#Installation">&#182;</a></h1><p><strong>Go to your /home directory</strong></p>
-<p>cd /home</p>
-<p><strong>Clone the repository</strong></p>
-<p>git clone <a href="https://github.com/EliabCanul/nauyaca.git">https://github.com/EliabCanul/nauyaca.git</a></p>
-<p><strong>Change to nauyaca directory</strong></p>
-<p>cd nauyaca</p>
-<p><strong>Install the dependencies</strong></p>
-<p>pipenv install</p>
-<p><strong>Close the terminal</strong></p>
-<p>exit</p>
-<p><strong>In the directory of your current shell (for example .bashrc), add the path to nauyaca</strong></p>
-<p>export PYTHONPATH:/home/{mypc}/nauyaca</p>
-<p><strong>substitute {mypc} for your pc name</strong></p>
-<p><strong>source your shell file</strong></p>
-<p>source .bashrc</p>
-<p><strong>Testing the examples</strong></p>
-<p><strong>In the nauyaca's main directory (where the Pipfile file is), initialize the virtual environment by typing</strong></p>
-<p>pipenv shell</p>
-<h1 id="Usage">Usage<a class="anchor-link" href="#Usage">&#182;</a></h1><p><strong>In Documentation open the .html files to see the tutorials. These tutorials have the main aim of showing the main usage of Nauyaca.</strong></p>
-<p><strong>Other examples can be seen at Examples directory</strong></p>
+<h1 id="Installation">Installation<a class="anchor-link" href="#Installation">&#182;</a></h1><p>Python =&gt;3.7 is required. Also, -poetry- is requiered to manage the dependencies.</p>
+<p>Installation steps are available at Installation file in the main directory.</p>
+<h1 id="Usage">Usage<a class="anchor-link" href="#Usage">&#182;</a></h1><p>Many examples can be seen at Examples directory.</p>
+<p>If you find useful Nauyaca in your research, please cite 
+"Nauyaca: a new tool to determine planetary masses and orbital elements through transit timing analysis"
+Canul et al. (2021)</p>
 
 </div>
 </div>
