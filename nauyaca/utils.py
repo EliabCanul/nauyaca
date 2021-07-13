@@ -763,7 +763,7 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
     ni = f["ITMAX"].value[0]
     cs = f["INTRA_STEPS"].value[0]
     
-    maxc2 = f["BESTLOGL"].value[:index+1]
+    maxc2 = f["MAP"].value[:index+1]
     bs = f["BESTSOLS"].value[:index+1]
 
     ref_epoch = f["REF_EPOCH"].value[0]
