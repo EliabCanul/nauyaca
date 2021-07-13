@@ -890,7 +890,7 @@ def extract_best_solutions(hdf5_filename, write_file=True):
     NPLA = f['NPLA'][()][0]
     index = f['INDEX'][()][0]
     best= f['BESTSOLS'][()]
-    log1_chi2 = f['BESTLOGL'][()] 
+    log1_chi2 = f['MAP'][()] 
     names = f['COL_NAMES'][()]
     f.close()
 
