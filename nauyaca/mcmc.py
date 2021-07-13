@@ -496,7 +496,6 @@ class MCMC:
 
     @staticmethod
     def logprior(x, psystem=None):
-        """The log prior function"""
+        """The uninformative log prior function"""
 
-        #return 0.0
-        return 1.0
+        return 0.0
