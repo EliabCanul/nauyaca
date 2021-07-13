@@ -88,9 +88,7 @@ nau
 
 # It should activate nauyaca wherever in your computer you are
 
-# Run the examples, and see nauyaca in action!
-
-python quick_fit.py
+# Run the notebooks Documentation or in Examples, and see nauyaca in action!
 
 
 ===============
