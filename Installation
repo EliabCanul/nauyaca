@@ -59,7 +59,7 @@ poetry shell
 # 3 =============================================
 
 # In order to ease the nauyaca usage, define the following lines 
-# in your .bash/.bashrc file
+# in your .bash/.bashrc file. It's done only the first time you install nauyaca.
 
 # nauyaca
 # 3.1 Add the nauyaca directory to your python path, 
@@ -82,7 +82,9 @@ source .bashrc
 
 # In order to test the proper installation, open a new terminal and go to
 # the Examples directory in nauyaca.
-# Activate the nauyaca virtual environment by typping
+
+
+# Activate the nauyaca virtual environment each time you need it just by typing
 
 nau
 
