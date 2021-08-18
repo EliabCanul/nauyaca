@@ -8,7 +8,7 @@ from .constants import Mearth_to_Msun, col_names
 __all__ = ['run_TTVFast', 'calculate_ephemeris', 'log_likelihood_func',
             'init_walkers', 'mcmc_summary', 'extract_best_solutions', 
             'get_mcmc_results', 'geweke', 'gelman_rubin',  
-            'cube_to_physical', '_ephemeris', '_remove_constants']
+            'cube_to_physical', '_ephemeris', '_remove_constants', '_insert_constants']
 
 __doc__ = f"Miscelaneous functions to support the main modules. Available are: {__all__}"
 
@@ -45,16 +45,18 @@ def run_TTVFast(flat_params, mstar, init_time=0., final_time=None, dt=None):
         SP[3] = Rsky, SP[4] = Vsky
     """    
 
+    if (len(flat_params) % 7) == 0: pass
+    else: sys.exit('flat_params do not contains the necessary elements. '+
+                        'Seven parameters per planet must be given')
+
     # Split 'flat_params' using 7 parameters per planet
     iters = [iter(flat_params)] * 7
     planets = list(zip(*iters))
 
-    # TODO: Verify that planets contains exactly 7 parameters per planet
-
     # Iteratively adds planet's parameters to TTVFast
     planets_list = []
     for planet in planets:
-        # Be careful with the order!: m, per, e, inc, omega, M, Omega
+
         planets_list.append(
         ttvfast.models.Planet( 
             mass= planet[0]*Mearth_to_Msun, 
@@ -129,14 +131,12 @@ def calculate_ephemeris(PSystem, flat_params):
     PSystem : 
         The Planetary System object
     flat_params : array or list
-        A flat array containing the planet parameters of the first planet
-        concatenated with the parameters of the next planet and so on. 
+        A flat array containing the seven planet parameters of the first planet
+        concatenated with the seven parameters of the next planet and so on. 
+        Thus, it should be of length 7 x number of planets.
         The order per planet must be: 
-        mass, period, eccentricity, inclination, argument of periastron, mean 
-        anomaly and ascending node.
-        Unlike to flat_params in run_TTVFast(), flat_params here is in the
-        normalized version (between 0 and 1) and also the constant parameters
-        should not be included.
+        mass [Mearth], period [days], eccentricity, inclination [deg], argument
+        of periastron [deg], mean anomaly [deg] and ascending node [deg].
 
     Returns
     -------
@@ -144,9 +144,6 @@ def calculate_ephemeris(PSystem, flat_params):
         A dictionary where keys are the planet_IDs from PSystem and the values
         are the simulated times of transit
     """
-
-    # Convert from hypercube data to physical
-    #flat_params = cube_to_physical(PSystem, flat_params)
 
     # Get 'positions' from signal in TTVFast
     signal_position = run_TTVFast(flat_params,  
@@ -253,7 +250,6 @@ def calculate_chi2(flat_params, PSystem):
     # Convert from hypercube data to physical
     flat_params = cube_to_physical(PSystem, flat_params)
 
-
     sim_times = calculate_ephemeris(PSystem, flat_params)
 
     chi2 = _chi2(PSystem.transit_times, PSystem.sigma_obs, sim_times, individual=False)
@@ -285,12 +281,12 @@ def calculate_chi2_physical(flat_params, PSystem, individual=False,
     insert_constants : bool, optional
         A flag to insert the constant parameters from PSystem.constant_params, 
         by default False. 
-        If set to False, flat_params must be of length 7 x number of planets. 
-        If set to True, then flat_params should not include the constant parameters.
+        If the flat_params is of length 7 x number of planets, set to False. 
+        If the flat_params does not include the constant parameters, set to True.
     get_ephemeris : bool, optional
         A flag to get the simulated ephemeris resulting from the flat_params,
-        by default False. If set to True, then returns a tuple with the simulated
-        ephemeris per planet
+        by default False. If set to True, then returns a tuple of the chi2 and 
+        the simulated ephemeris per planet
 
     Returns
     -------
@@ -308,8 +304,7 @@ def calculate_chi2_physical(flat_params, PSystem, individual=False,
     x = list(flat_params)  
 
     if insert_constants:
-        for k, v in PSystem.constant_params.items(): 
-            x.insert(k, v)
+        x = _insert_constants(PSystem, x)
 
     if len(x) == 7 * PSystem.npla:
         pass 
@@ -335,7 +330,7 @@ def calculate_chi2_physical(flat_params, PSystem, individual=False,
         return chi2
 
 
-def log_likelihood_func(flat_params, PSystem, cube):
+def log_likelihood_func(flat_params, PSystem, cube=True, insert_constants=False):
     """A function to calculate the Log Likelihood
 
     This function is used by the MCMC
@@ -353,15 +348,23 @@ def log_likelihood_func(flat_params, PSystem, cube):
         should not be included.
     PSystem : 
         The Planetary System object
-
+    cube : bool, optional
+        A flag to inform wheter flat_params is in cube form (ie., normalized
+        between 0 and 1) or it is in physical values (False), by default True
+    insert_constants : bool, optional
+        A flag to insert the constant parameters from PSystem.constant_params, 
+        by default False. 
+        If set to False, flat_params must be of length 7 x number of planets. 
+        If set to True, then flat_params should not include the constant parameters.
+        This option is useful to calculate log-likelihood from physical values.
     Returns
     -------
     float
         The log likelihood of the current solution
     """    
-
+    
     if cube:
-        # Verify that proposal is inside boundaries    
+        # Verify that proposal is inside -hypercube- boundaries    
         if False in intervals(PSystem.hypercube, flat_params):
             return -np.inf
         else:
@@ -369,19 +372,22 @@ def log_likelihood_func(flat_params, PSystem, cube):
         
         # Convert from hypercube data to physical
         flat_params = cube_to_physical(PSystem, flat_params)
-    
+        # at this point flat_params has all the dimensions
+
     else:
-        # Verify that proposal is inside boundaries    
+        # Verify that proposal is inside -physical- boundaries    
         if False in intervals(PSystem.bounds, flat_params):
             return -np.inf
+            
         else:
             pass
-
-        flat_params = list(flat_params)  
-        # Insert constants to make simulations
-        for k, v in PSystem.constant_params.items(): 
-            flat_params.insert(k, v)        
-
+         
+        if insert_constants:
+            # Insert constants before making simulations
+            flat_params = _insert_constants(PSystem, flat_params)
+        else:
+            # Do not insert. flat_params must have all the dimensions
+            pass
 
     sim_times = calculate_ephemeris(PSystem, flat_params)
 
@@ -420,9 +426,7 @@ def cube_to_physical(PSystem, x):
     x = np.array(PSystem.bi) + np.array(x)*(np.array(PSystem.bf) - np.array(PSystem.bi))
 
     # Reconstruct flat_params adding the constant values
-    x = list(x)  
-    for k, v in PSystem.constant_params.items(): 
-        x.insert(k, v)
+    x = _insert_constants(PSystem, x)
     x = np.array(np.split(np.array(x), PSystem.npla))
 
     # Invert the parameterized angles to get argument and ascending node
@@ -432,6 +436,15 @@ def cube_to_physical(PSystem, x):
     x[:,5] = list(map(f,M)) 
 
     return x.flatten()
+
+def _insert_constants(PSystem, x):
+    """A help function to insert the constant parameters from x. In this case,
+    x must be composed of physical values
+    """
+    x = list(x)
+    for k, v in PSystem.constant_params.items(): 
+        x.insert(k, v)   
+    return x
 
 
 def _remove_constants(PSystem, x):
@@ -583,12 +596,9 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
             current_solution =  params[current_index].tolist()
             
             perturbed_solution = []
-            #rdmu_b = np.random.uniform(0.0, 0.1)
 
             for par_idx, param in enumerate(current_solution):
-                #linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
-                #lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b                
-                #delta = np.random.uniform(param-linf, param+lsup)
+
                 while True:
                     delta = np.random.normal(param, 0.01)
                     if 0.<= delta <= 1.:
@@ -679,12 +689,9 @@ def _func_from_opt(PSystem, distribution, ntemps=None, nwalkers=None,
                 current_solution = par_sep_2[i]
                 
                 perturbed_solution = []
-                #rdmu_b = np.random.uniform(0.0, 0.1)
                 
                 for par_idx, param in enumerate(current_solution):
-                    #linf = (param - PSystem.hypercube[par_idx][0]) * rdmu_b
-                    #lsup = (PSystem.hypercube[par_idx][1] - param) * rdmu_b
-                    #delta = np.random.uniform(param-linf, param+lsup)
+
                     while True:
                         delta = np.random.normal(param, 0.01)
                         if 0. <= delta <= 1.:
@@ -797,9 +804,7 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
         best_sol = cube_to_physical(PSystem, best_sol)
     else:
         # It is physical and insert constants
-        best_sol = list(best_sol)
-        for k, v in PSystem.constant_params.items(): 
-            best_sol.insert(k, v)
+        best_sol = _insert_constants(PSystem, best_sol)
         
 
 

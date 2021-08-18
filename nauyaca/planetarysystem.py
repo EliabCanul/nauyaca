@@ -264,7 +264,7 @@ class PlanetarySystem:
         # Manage timestep
         if dt == None:
             # Estimate dt based on the lower estimated period
-            self.dt = min(estimated_periods)/30.
+            self.dt = round(min(estimated_periods)/30., 5)
         elif isinstance(dt, (int,float)):
             # Set given dt
             self.dt = dt
@@ -345,7 +345,7 @@ class PlanetarySystem:
             Planet.mass = (Planet.mass[0], k_mass_frac)  # Update mass limits
             Planet.boundaries  # Update planet boundaries
             print(f'--> Upper mass boundary for planet -{Planet.planet_id}- has been'+
-            f' set to {k_limit*100}% of stellar mass: {k_mass_frac} [Mearth]')        
+            f' set to {k_limit*100}% of stellar mass: {k_mass_frac} {units[0]}')        
         else:
             pass
 

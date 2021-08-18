@@ -194,8 +194,7 @@ class Plots:
                 # Insert the constant parameters
                 flat_params = []
                 for rp in rdm_params:
-                    for k, v in self.PSystem.constant_params.items():
-                        rp.insert(k,v) 
+                    rp = _insert_constants(self.PSystem, rp)
                     flat_params.append(rp)
                   
         else:
@@ -369,13 +368,6 @@ class Plots:
             nwalkers = f['NWALKERS'][0]
             f.close()
 
-            #burnin = int(self.burnin*index)
-            #last_it = int(converge_time / intra_steps)
-            #chains = chains[:,burnin:index+1,:]
-
-            # Convert from  normalized to physical
-            #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
-        
         else:
             raise RuntimeError("No chains or hdf5 file specified")
 
@@ -398,8 +390,6 @@ class Plots:
                 # Insert the constant parameters
                 for cp, val in self.PSystem.constant_params.items():
                     chains = np.insert(chains, cp, val, axis=2)
-        ## Convert from  normalized to physical
-        #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
 
         # Figure
         sns.set(context=self.sns_context,style=self.sns_style,font_scale=self.sns_font)
@@ -513,15 +503,12 @@ class Plots:
             index = f['INDEX'].value[0]
             # shape for chains is: (temps,walkers,steps,dim)
             chains = f['CHAINS'].value[self.temperature,::int(thin),:index+1,:]
-            #total_walkers = chains.shape[0]
-            nwalkers = f['NWALKERS'][0]
+            nwalkers = chains.shape[0]
             intra_steps = f['INTRA_STEPS'].value[0]
             f.close()
 
             xlabel = f'Iteration / {intra_steps} '
-            ##
-            #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(total_walkers) ])
-            ##
+
         else:
             raise RuntimeError("No chains or hdf5 file specified")
 
@@ -609,20 +596,9 @@ class Plots:
         elif self.hdf5_file:
             f = h5py.File(self.hdf5_file, 'r')
             index = f['INDEX'].value[0]
-            #intra_steps = f['INTRA_STEPS'].value[0]
-            #converge_time = f['ITER_LAST'].value[0]
             chains = f['CHAINS'].value[self.temperature,:,:index+1,:]
             nwalkers= f['NWALKERS'].value[0]
             f.close()
-
-            #burnin = int(self.burnin*index)
-            #last_it = int(converge_time / intra_steps)
-            #chains = chains[0,:,burnin:last_it,:]
-            ##
-
-            #chains = np.array([[cube_to_physical(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
-            # remove constant params
-            #chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
 
         else:
             raise RuntimeError("No chains or hdf5 file specified")
@@ -639,10 +615,6 @@ class Plots:
             chains = np.array([[_remove_constants(self.PSystem, x) for x in chains[nw,:,:]] for nw in range(nwalkers) ])
         else:
             pass
-            # Insert the constant parameters
-            #for cp, val in self.PSystem.constant_params.items():
-            #    chains = np.insert(chains, cp, val, axis=2)
-
 
         nwalkers = chains.shape[0]
         steps = chains.shape[1]
@@ -867,19 +839,19 @@ class Plots:
         parameters to make the simulation. If don't, complete the fields with the 
         constant parameters. fp must be list. This is used in TTVs plot function"""
 
-        if len(fp) == self.PSystem.npla*7 and len(self.PSystem.constant_params)!=0:
+        if len(fp) == self.PSystem.npla*7:# and len(self.PSystem.constant_params)!=0:
             # there are the correct number of dimensions, but should be more?
-            
-            raise ValueError('Invalid values in flat_params. Pass only planetary parameters')
-            
-        elif len(fp) == self.PSystem.npla*7 and len(self.PSystem.constant_params)==0:
             # dimensions are correct
-            
             return fp
-        else:
             
+            
+        elif len(fp) > self.PSystem.npla*7: # self.PSystem.npla*7 and len(self.PSystem.constant_params)==0:
+            # Maybe you're passing the chi2 values?
+            raise ValueError('More data in flat_params than expected') 
+
+        else:
             # insert constant params
-            for k, v in self.PSystem.constant_params.items(): 
-                fp.insert(k, v)
+            fp = _insert_constants(self.PSystem, fp)
+            
             return fp
             

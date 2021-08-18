@@ -16,7 +16,7 @@ physical_bounds = {
     }
 
 # Units of the parameters. It is used in the outputs
-units = ("[M_earth]", "[d]", " ", "[deg]", "[deg]", "[deg]", "[deg]")
+units = ["[M_earth]", "[d]", " ", "[deg]", "[deg]", "[deg]", "[deg]"]
 
 # Default colors for plots
 colors = {0:"red", 

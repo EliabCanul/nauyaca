@@ -126,9 +126,14 @@ class MCMC:
 
         # p0 is normalized? Or is it physical?
         if (self.p0 >= 0.).all() and (self.p0 <= 1.).all():
-            p0_norm = True
+            # cube
+            p0_norm = True  
+            insert_cnst = False  
         else:
-            p0_norm = False
+            # physical
+            p0_norm = False 
+            # If p0 is physical, then constants must be inserted  
+            insert_cnst = True 
 
         # Check for consistency in input parameters
         if self.nwalkers < 2 * self.PSystem.ndim:
@@ -179,9 +184,9 @@ class MCMC:
         
         # Default values in ptemcee, 
         # Do not change it at least you have read Vousden et al. (2016):
-        _nu = 100. #/nwalkers 
-        _t0 = 10000. #/nwalkers
-        a_scale = 10
+        _nu = 100. /self.nwalkers 
+        _t0 = 1000. /self.nwalkers
+        a_scale = 2 #10
 
         # RUN
         with closing(Pool(processes=self.cores)) as pool:
@@ -198,7 +203,9 @@ class MCMC:
                                 a=a_scale, 
                                 Tmax=self.tmax,
                                 pool=pool,
-                                loglargs=(self.PSystem,p0_norm), 
+                                loglargs=(self.PSystem, 
+                                            p0_norm, # cube
+                                            insert_cnst), # insert_constants
                                 logpkwargs={'psystem':self.PSystem}
                                 )
 
@@ -430,7 +437,7 @@ class MCMC:
         Returns
         -------
         dict
-            The sampler object in dictionary
+            A new MCMC instance with the parameters from the previous run
         """
         from os import path
 
@@ -489,9 +496,9 @@ class MCMC:
                                 path =out_path,
                                 suffix=suffix)
         
-        sampler = new_mcmc.run()
+        ##sampler = new_mcmc.run()
         
-        return sampler
+        return new_mcmc
 
 
     @staticmethod

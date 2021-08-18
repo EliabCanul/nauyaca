@@ -173,10 +173,12 @@ class SetPlanet:
         lower = max(phy_bds[0], param[0])
         upper = min(phy_bds[1], param[1])
 
+        idx_p = col_names.index(param_str)
+
         if param[0] < phy_bds[0]:
-            print(f"--> Parameter -{param_str}- of planet -{self.planet_id}- set to lower physical limit: {phy_bds[0]}")
+            print(f"--> Parameter -{param_str}- of planet -{self.planet_id}- set to lower physical limit: {phy_bds[0]} {units[idx_p]}")
         if param[1] > phy_bds[1]:
-            print(f"--> Parameter -{param_str}- of planet -{self.planet_id}- set to upper physical limit: {phy_bds[1]}")
+            print(f"--> Parameter -{param_str}- of planet -{self.planet_id}- set to upper physical limit: {phy_bds[1]} {units[idx_p]}")
 
         return (lower,  upper)
 
