@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nauyaca"
-version = "0.1.0"
+version = "1.0.0"
 description = "A tool to deal with TTVs inversion problem"
 authors = ["Eliab Canul <ecanul@astro.unam.mx>"]
 
