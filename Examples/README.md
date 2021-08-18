@@ -8,7 +8,7 @@ All input files (as planet ephemeris) are stored in the folder named 'inputs'. F
 In order to run these examples in a permissible wall-clock time, we suggest using a multi-core machine. Otherwise, these examples can take longer times to complete. The html directory contains these examples in html format.
 
 
-# MAIN EXAMPLES
+## MAIN EXAMPLES
 
 **simple_fit**: Perform the fit of a three-planet system using the optimization and MCMC modules. Generate a pair of built-in figures to visualize the results. Unlike the example shown in the documentation, this example shows the minimum code needed to perform yout fit.
 
@@ -17,7 +17,7 @@ In order to run these examples in a permissible wall-clock time, we suggest usin
 
 
 
-# OTHER EXAMPLES:
+## OTHER EXAMPLES:
 
 For the following examples, run first the two examples above since these results will be used.
 
