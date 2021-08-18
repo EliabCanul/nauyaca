@@ -14049,8 +14049,9 @@ An exception has occurred, use %tb to see the full traceback.
 <div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">my_proposal</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">_insert_constants</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">my_proposal</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">my_proposal</span> <span class="o">=</span> <span class="n">nau</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">_insert_constants</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">my_proposal</span><span class="p">)</span> <span class="c1"># Insert the constants</span>
 
+<span class="c1"># and now, calculate ephemeris</span>
 <span class="n">nau</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">calculate_ephemeris</span><span class="p">(</span><span class="n">PS</span><span class="p">,</span> <span class="n">my_proposal</span><span class="p">)</span>
 </pre></div>
 
@@ -14429,7 +14430,7 @@ An exception has occurred, use %tb to see the full traceback.
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>In this case, the reference time is 2458690.0 [BJD]. Thus, in order to set a valid $t_0$, the planet's ephemeris must be <strong>referenced to the same</strong> time! Otherwise the transit times will be out of phase and we'll get spurious results.</p>
-<p>Choosing your own reference time is also allowes as long as the selectet $t_0$ is inside predefined limits calculated by nauyaca. For example, from the system above, let's change the reference time through the simulation function:</p>
+<p>Choosing your own reference time is also allowed as long as the selectet $t_0$ is inside predefined limits calculated by nauyaca. For example, from the system above, let's change the reference time through the simulation function:</p>
 
 </div>
 </div>
