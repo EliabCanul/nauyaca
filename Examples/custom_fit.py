@@ -22,7 +22,7 @@ P2.mass = [1,50]
 P2.period = [66.0,66.1]
 P2.ecc = [0.0,0.1]
 P2.inclination = [85,95]
-P2.ascending_node = [90,270]
+P2.ascending_node = [0,180]
 P2.load_ttvs(directory + "3pl_planet1_ttvs.dat")
 
 P3 = nau.SetPlanet('Planet-d')
@@ -30,7 +30,7 @@ P3.mass = [1,150]
 P3.period = [125.8,125.9]
 P3.ecc = [0.0,0.1]
 P3.inclination = [85,95]
-P3.ascending_node = [90,270]
+P3.ascending_node = [0,180]
 P3.load_ttvs(directory + "3pl_planet2_ttvs.dat")
 
 PS = nau.PlanetarySystem("MySystem", mstar=1.08, rstar=1.0)
