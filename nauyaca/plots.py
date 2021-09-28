@@ -245,7 +245,7 @@ class Plots:
                                 (y_obs-model_obs.predict(x_obs))*mins, 
                                 yerr=errors, 
                                 color=self.colors[index], 
-                                ecolor='gray',
+                                ecolor='k',
                                 fmt='o', 
                                 markersize=4,
                                 mec='k',
@@ -292,7 +292,7 @@ class Plots:
                         # Plot O-C
                         ax.plot(y_cal, 
                                 (y_cal-model_cal.predict(x_cal))*mins , 
-                                color= self.colors[index] ,
+                                color= self.colors[index] , zorder=-1,
                                 **line_kwargs
                                 )
                         ax.set_xlim(l_xlim, r_xlim)

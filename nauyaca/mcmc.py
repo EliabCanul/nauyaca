@@ -184,9 +184,9 @@ class MCMC:
         
         # Default values in ptemcee, 
         # Do not change it at least you have read Vousden et al. (2016):
-        _nu = 100. /self.nwalkers 
-        _t0 = 1000. /self.nwalkers
-        a_scale = 2 #10
+        _nu = 100. #/self.nwalkers 
+        _t0 = 1000. #/self.nwalkers
+        a_scale = 10
 
         # RUN
         with closing(Pool(processes=self.cores)) as pool:

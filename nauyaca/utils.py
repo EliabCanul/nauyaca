@@ -830,7 +830,7 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
         print("--> Results in File:  ", hdf5_file)
         print("--> Reference epoch of the solutions: ", ref_epoch, " [JD]")
         print("--> Best solution in MCMC")
-        print("      Logl: ", round(best_logl,5))
+        print("      MAP: ", round(best_logl,5))
         print("               "+" ".join([cn for cn in col_names]))
         for i in range(npla):
             print(f"      Planet {i+1}: " + "   ".join( str(round(k,4)) for k in np.array_split(best_sol, npla)[i]) )
