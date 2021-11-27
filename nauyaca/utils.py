@@ -1,6 +1,6 @@
+import sys
 import numpy as np
 import ttvfast
-import sys
 import h5py
 from .constants import Mearth_to_Msun, col_names
 
@@ -871,11 +871,13 @@ def mcmc_summary(PSystem, hdf5_file, burnin=0.0, fthinning=1, get_posteriors=Fal
         return
 
 
-def extract_best_solutions(hdf5_filename, write_file=True):
+def extract_best_solutions(PSystem, hdf5_filename, write_file=True):
     """Extract the best solutions saved in the hdf5 file.
 
     Parameters
     ----------
+    PSystem : 
+        The Planetary System object
     hdf5_filename : str
         The hdf5 file from where the best solutions will be extracted.
     write_file : bool, optional
@@ -884,9 +886,9 @@ def extract_best_solutions(hdf5_filename, write_file=True):
     Returns
     -------
     list
-        The result is a list of tuples where the first element is the logl and 
+        The result is a list of tuples where the first element is the MAP and 
         the second element is an array with the corresponding solution in the
-        normalized form. It is sorted from better to worse solution.
+        physical form. It is sorted from better to worse solution.
     """
 
     f = h5py.File(hdf5_filename, 'r')
@@ -895,12 +897,17 @@ def extract_best_solutions(hdf5_filename, write_file=True):
     NPLA = f['NPLA'][()][0]
     index = f['INDEX'][()][0]
     best= f['BESTSOLS'][()]
-    log1_chi2 = f['MAP'][()] 
-    names = f['COL_NAMES'][()]
+    max_apost = f['MAP'][()] 
+    #names = f['COL_NAMES'][()]
     f.close()
 
+    names = PSystem.params_names_all
+
+    final_map = max_apost[:index+1]
+    final_best = [cube_to_physical(PSystem, b) for b in best[:index+1] ]
+
     # Sort solutions by chi2: from better to worst
-    tupla = zip(log1_chi2[:index+1],best[:index+1])
+    tupla = zip(final_map, final_best)
     tupla_reducida = list(dict(tupla).items())   # Remove possible repeated data
     sorted_by_chi2 = sorted(tupla_reducida, key=lambda tup: tup[0], reverse=True)#[::-1] 
 
@@ -912,7 +919,7 @@ def extract_best_solutions(hdf5_filename, write_file=True):
         writefile(best_file, 'a', head, '%-10s '*3 +'\n')
 
         
-        head = "#-chi2   " + names 
+        head = "#MAP   " + names 
 
         writefile(best_file, 'a', head, '%-16s'+' %-11s'*(
                                                 len(head.split())-1) + '\n')

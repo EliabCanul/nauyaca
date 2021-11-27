@@ -1,14 +1,15 @@
+import os
+from contextlib import closing
 import time 
 import datetime
 import numpy as np
 from dataclasses import dataclass
 from multiprocessing import Pool
-from .utils import * 
-from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants 
 import h5py
 import ptemcee as pt
-from contextlib import closing
-import os
+from .utils import * 
+from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants 
+
 
 
 __doc__ = "A module to perform MCMC runs using the Parallel-tempering algorithm"
@@ -301,7 +302,7 @@ class MCMC:
 
         
         # Extract best solutions from hdf5 file and write it in ascci
-        extract_best_solutions(self.hdf5_filename, write_file=True)
+        extract_best_solutions(self.PSystem, self.hdf5_filename, write_file=True)
 
         print("--> Reference epoch of the solutions: ", self.PSystem.t0, " [JD]")
         print('--> Iterations performed: ', iteration +1)

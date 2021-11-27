@@ -1,6 +1,5 @@
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-from .utils import *
 import matplotlib
 import matplotlib.pyplot as plt
 from collections.abc import Iterable
@@ -10,6 +9,7 @@ import h5py
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
+from .utils import *
 from .constants import colors, units_latex, labels
 
 
@@ -117,9 +117,9 @@ class Plots:
 
         # =====================================================================
         # PREPARING DATA
-        # flat_params have to:
-        #   * be a list of lists!
-        #   * be in physical values with all the dimensions
+        # flat_params have to be:
+        #   * a list of lists!
+        #   * in physical values with all the dimensions at the end of this part
 
         try:
             flat_params = list(flat_params)
@@ -131,7 +131,7 @@ class Plots:
             # Here, flat_params must be in physical values!
 
             # Is a unique list or array
-            if isinstance(flat_params[0], float):
+            if isinstance(flat_params[0], float) or isinstance(flat_params[0], int):
                 flat_params = list(flat_params)  # convert to list
                 flat_params = self._check_dimensions(flat_params)
                 flat_params = [flat_params]   # convert to list of list
@@ -173,7 +173,7 @@ class Plots:
             elif mode.lower() == 'best':
                 print('--> plotting best solutions')
                 # best_solutions comes from better to worse
-                best_solutions = extract_best_solutions(self.hdf5_file, 
+                best_solutions = extract_best_solutions(self.PSystem, self.hdf5_file, 
                                                         write_file=False)
                 
                 rdm_params = [list(bs[1]) for bs in best_solutions[:nsols] ]
@@ -184,7 +184,7 @@ class Plots:
                     "Valid options are: 'random', 'best' ") 
 
 
-            # Decide if it have to be converted to physical values
+            # Decide if rdm_params has to be converted to physical values
             # Convert from  normalized to physical
             if (np.array(rdm_params) >= 0.).all() and (np.array(rdm_params) <= 1.).all():
                 # Convert to physical values. It includes the constant parameters
@@ -192,14 +192,14 @@ class Plots:
 
             else:
                 # Insert the constant parameters
-                flat_params = []
-                for rp in rdm_params:
-                    rp = _insert_constants(self.PSystem, rp)
-                    flat_params.append(rp)
-                  
+                #flat_params = []
+                #for rp in rdm_params:
+                #    rp = _insert_constants(self.PSystem, rp)
+                #    flat_params.append(rp)
+                flat_params = [self._check_dimensions(rp) for rp in rdm_params]  
         else:
             # No data to plot. Just the observed TTVs.
-            print('---> No solutions to plot')
+            print('--> No solutions to plot')
         
 
         # =====================================================================
@@ -290,8 +290,10 @@ class Plots:
                         x_cal, y_cal, model_cal = self._calculate_model(EPOCHS[planet_id]) #epochs
                         
                         # Plot O-C
+                        # Use the same regression coefficients from the observations
                         ax.plot(y_cal, 
-                                (y_cal-model_cal.predict(x_cal))*mins , 
+                                #(y_cal-model_cal.predict(x_cal))*mins , # regression from model
+                                (y_cal-model_obs.predict(x_cal))*mins , 
                                 color= self.colors[index] , zorder=-1,
                                 **line_kwargs
                                 )
@@ -301,7 +303,8 @@ class Plots:
                         if residuals:
                             #
                             residual_obs = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins  for x,y in zip(list(x_obs.flatten()), list(y_obs))}
-                            residual_cal = {x:(y-model_cal.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
+                            #residual_cal = {x:(y-model_cal.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))} # regression from model
+                            residual_cal = {x:(y-model_obs.predict( np.array([x]).reshape(1,-1) ))*mins for x,y in zip(list(x_cal.flatten()), list(y_cal))}
 
                             residuals = [residual_obs[r]-residual_cal[r] for r in sorted(ttvs_dict.keys())]
                             
@@ -649,12 +652,12 @@ class Plots:
                     )
 
         plt.subplots_adjust(
-        top=0.969,
-        bottom=0.061,
-        left=0.056,
-        right=0.954,
-        wspace=0.,#015,
-        hspace=0.#015
+        top = 0.969,
+        bottom = 0.061,
+        left = 0.056,
+        right = 0.954,
+        wspace = 0.015,
+        hspace = 0.015
         )
         
         return fig

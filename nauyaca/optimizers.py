@@ -1,15 +1,16 @@
+import sys
+import copy
+import warnings
 import time 
 import datetime
 import numpy as np
-import sys
+from scipy.optimize import differential_evolution
+from scipy.optimize import minimize
 from dataclasses import dataclass
 from multiprocessing import Pool
 from .utils import * 
 from .utils import writefile, intervals, _chunks, cube_to_physical, _remove_constants, calculate_chi2 
-import copy
-import warnings
-from scipy.optimize import differential_evolution
-from scipy.optimize import minimize
+
 warnings.filterwarnings("ignore")
 
 
@@ -112,7 +113,7 @@ class Optimizers:
         f2 = NM.fun
 
         # Verbose
-        print(f" {indi+1} |  {f0 :.3f}  -->  {f1 :.3f}  -->  {f2 :.3f}")
+        print(f" {indi+1} |  {f0 :.3f} --> {f1 :.3f} --> {f2 :.3f}  |  {f2/PSystem.dof['total'] :.3f}")
 
         # Reconstruct flat_params adding the constant values
         x2_cube = x2.tolist() 
@@ -174,7 +175,7 @@ class Optimizers:
         print(f'     * {base_name_phys} (physical)')
         print(f'--> Reference time of the solutions: {self.PSystem.t0} [days]')
         print('- - - - - - - - - - - - - - - - - - - - -')
-        print('Solution  |   chi square from optimizers'        )
+        print('Solution  |  chi square minimization sequence  |  Reduced chi square'        )
         print('- - - - - - - - - - - - - - - - - - - - -')
 
         # Run in parallel

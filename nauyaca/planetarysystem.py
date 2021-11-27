@@ -1,12 +1,12 @@
-from dataclasses import dataclass
-from collections import OrderedDict
-from .constants import col_names, units, Msun_to_Mearth, Rsun_to_AU, k_limit
-import numpy as np
+import sys
 import warnings
 import pickle
 import json
 import copy
-import sys
+import numpy as np
+from dataclasses import dataclass
+from collections import OrderedDict
+from .constants import col_names, units, Msun_to_Mearth, Rsun_to_AU, k_limit
 
 
 __doc__ = "A module to create Planetary System objects over which simulations will be performed"
@@ -50,7 +50,8 @@ class PlanetarySystem:
                     'sigma_obs',
                     'second_term_logL',
                     'rstarAU',
-                    'valid_t0'
+                    'valid_t0',
+                    'dof'
                     )
 
     def __init__(self, system_name,mstar,rstar):
@@ -149,9 +150,8 @@ class PlanetarySystem:
         indexes_remove = list(self.constant_params.keys())
         for index in sorted(indexes_remove, reverse=True):
             del self.bounds[index]
-            # Nuevo. Delete constant values in parameterized bounds
+            # Delete constant values in parameterized bounds
             del self._bounds_parameterized[index]
-            # Nuevo
 
         # Create a string with parameter names
         params_names = []
@@ -161,11 +161,12 @@ class PlanetarySystem:
         self.params_names_all = "  ".join(params_names)
 
         for index in sorted(indexes_remove, reverse=True):
-            del params_names[index]
+            # Also remove the constant parameter in the string
+            del params_names[index] 
         params_names = "  ".join(params_names)
         self.params_names = params_names
 
-        # Ascending node of at least one Planet must be fixed
+        # Ascending node of at least one Planet must be fixed!
         o_keys = list(self.constant_params.keys())
         cparams = [self.params_names_all.split()[o_k] for o_k in o_keys]
         assert sum([cp.startswith("ascending_node") for cp in cparams]) > 0, "The"\
@@ -310,23 +311,41 @@ class PlanetarySystem:
         del TTVs_copy
 
         # Create dictionary of central transit times and mean transit errors
+        # and calculate also degrees of freedom
         self.sigma_obs = {}
         self.transit_times = {}
+        self.dof = {}
+        nobs_tot = 0
         for planet_id, ttvs_obs in self.TTVs.items():
             mean_error = {}
             timing = {}
             for epoch, times in ttvs_obs.items():
                 timing[epoch] = times[0]
-                mean_error[epoch] = (times[1] + times[2])/2.
+                # Add the errors in quadrature
+                mean_error[epoch] = np.sqrt(times[1]**2 + times[2]**2)
+
+                # This was the mean of both errors. Not longer used.
+                #mean_error[epoch] = (times[1] + times[2])/2.
+
             self.sigma_obs[planet_id] = mean_error
             self.transit_times[planet_id] = timing
+            
+            # Calculate degrees of freedom per planet
+            nobs = len(ttvs_obs)
+            nobs_tot += nobs 
+            planet_num = str(self.planets_IDs[planet_id]+1)
+            nparams = sum(1 for par in self.params_names.split() if 
+                                            par.endswith(planet_num))
+            self.dof[planet_id] = nobs - nparams
+
+        # Total dof
+        self.dof['total'] = nobs_tot - self.ndim
 
         # Create dictionary of the constant part of the likelihood function.
         self.second_term_logL = {}
         for planet_id, d_errs in self.sigma_obs.items():
             arg_log = 2*np.pi* np.array(list(d_errs.values()))**2
             self.second_term_logL[planet_id] = np.sum( 0.5*np.log(arg_log) )
-
 
         return
 
@@ -520,7 +539,8 @@ class PlanetarySystem:
                 summary.append("\n".join([f"    {col_names[i]}: {str(bo)}  {units[i]}" 
                                         for i,bo in enumerate(v.boundaries)] ))
                 if hasattr(self.planets[k], "ttvs_data") and type(self.planets[k].ttvs_data) == dict:
-                    summary.append("  TTVs: True")
+                    #summary.append("  TTVs: True")
+                    summary.append(f"  TTVs: {len(self.TTVs[k])}")
                 else:
                     summary.append("  TTVs: False")
             summary.append("\nSimulation attributes: ")

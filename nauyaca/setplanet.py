@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import sys
+from dataclasses import dataclass
 import collections
 from .constants import col_names, units, physical_bounds
 
@@ -20,7 +20,6 @@ class SetPlanet:
 
     """
 
-    
     # All instances of the class
     __slots__ = ('planet_id', 
                 'mass', 
@@ -58,7 +57,7 @@ class SetPlanet:
 
     @property
     def boundaries(self):
-        """Establish the planetary boundaries of the Planet.
+        """Set the planetary boundaries of the Planet.
 
         Valid parameters are: mass, period, ecc, inclination, argument,
         mean_anomaly, ascending_node.
