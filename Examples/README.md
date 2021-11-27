@@ -1,19 +1,19 @@
 
 # DESCRIPTION
 
-This directory contains many examples for using nauyaca along with many other python tools. We recommend see the functionalities of the modules at Documentation before running the examples, so the user becomes familiar with the main modules and functions.
+This directory contains many examples for using nauyaca together with with many other python tools. We recommend see the functionalities of the modules at Documentation before running these examples, so the user becomes familiar with the main modules and functions.
 
 All input files (as planet ephemeris) are stored in the folder named 'inputs'. For many examples the same transit ephemeris are used. We recommend running these examples in the same order as listed here. These examples show many extra features hosted in nauyaca. 
 
-In order to run these examples in a permissible wall-clock time, we suggest using a multi-core machine. Otherwise, these examples can take longer times to complete. The html directory contains these examples in html format.
+In order to run these examples in a permissible wall-clock time, we suggest using a multi-core machine. Otherwise, these examples can take longer times to complete. The html directory contains these examples in non-interactive format.
 
 
 ## MAIN EXAMPLES
 
-**simple_fit**: Perform the fit of a three-planet system using the optimization and MCMC modules. Generate a pair of built-in figures to visualize the results. Unlike the example shown in the documentation, this example shows the minimum code needed to perform yout fit.
+**simple_fit**: Performs the fit of a three-planet system using the optimization and MCMC modules. Generate a pair of built-in figures to visualize the results. Unlike the example shown in the documentation, this example shows the minimum code needed to perform your fit.
 
 
-**customized_fit**: Perform the fit of a two-planet system using a initial walker population and prior given by the user. Many other features in nauyaca are introduced to customize the fitting process. Plot helpful figures to assess for convergence.
+**customized_fit**: Performs the fit of a two-planet system using a initial walker population and prior given by the user. Many other features in nauyaca are introduced to customize the fitting process. Plot helpful figures to assess for convergence.
 
 
 
@@ -22,7 +22,7 @@ In order to run these examples in a permissible wall-clock time, we suggest usin
 For the following examples, run first the two examples above since these results will be used.
 
 
-**initial_walkers**: An example of how to chose the best built-in initialization strategy from the optimization results. For this example, simple_fit results are needed.
+**initial_walkers**: An example of how to choose the best built-in initialization strategy from the optimization results. For this example, simple_fit results are needed.
 
 
 **restarting_mcmc**: The mcmc did not converge? Probably more iterations are needed. Restart an mcmc run from previous results. For this example, customized_fit results are needed.
@@ -35,6 +35,5 @@ For the following examples, run first the two examples above since these results
 
 
 
-
-Modify these scripts to adapt to your own problem. More examples will be available soon!
+--> Modify these scripts to adapt to your own problem. More examples will be available soon!
 
